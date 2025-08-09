@@ -5,7 +5,7 @@ class UserPreference extends Model {}
 
 UserPreference.init({
   userId: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.UUID,
     references: {
       model: 'users',
       key: 'id',

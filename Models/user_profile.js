@@ -6,7 +6,7 @@ class UserProfile extends Model {}
 
 UserProfile.init({
   userId: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.UUID,
     primaryKey: true,
     references: {
       model: 'users',

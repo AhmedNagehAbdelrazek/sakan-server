@@ -39,6 +39,9 @@ module.exports = function(server) {
     // Initialize notification socket events
     require('./sockets/notificationSocket')(io, socket);
 
+    // Initialize chat socket events
+    require('./sockets/chatSocket')(io, socket);
+
     socket.on('disconnect', async () => {
       try {
         await User.update({ socketId: null, online: false }, { where: { id: user.id } })

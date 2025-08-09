@@ -34,9 +34,9 @@ class User extends Model {
 
 User.init({
   id: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
     primaryKey: true,
-    autoIncrement: true,
   },
   username: {
     type: DataTypes.STRING,
@@ -103,7 +103,7 @@ User.init({
   },
 }, {
   hooks:{
-    beforeSave: async (user, options) => {
+    beforeSave: async (user) => {
       if (user.changed('password_hash')) {
         user.password_hash = await bcrypt.hash(user.password_hash,4);
       }

@@ -11,7 +11,7 @@ UserActivity.init({
     autoIncrement: true,
   },
   userId: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.UUID,
     references: {
       model: 'users',
       key: 'id',
