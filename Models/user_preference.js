@@ -8,8 +8,6 @@ UserPreference.init({
     type: DataTypes.UUID,
     defaultValue: DataTypes.UUIDV4,
     primaryKey: true,
-    allowNull: false,
-    field: 'id',
   },
   userId: {
     type: DataTypes.UUID,

@@ -18,13 +18,11 @@ exports.SignUp = asyncHandler(async (req, res, next) => {
   }
   await authService.checkUserDoesNotExists({username, email, phone});
 
-  try {
+  
     const user = await authService.register({username, email, role, password, phone});
     req.userId = user.id;
     next();
-  } catch (err) {
-    return next(new ApiError(`${err.message}`, 500));
-  }
+
 });
 
 exports.sendOTP = asyncHandler(async (req, res) => {

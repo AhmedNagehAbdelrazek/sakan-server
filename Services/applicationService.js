@@ -4,18 +4,19 @@ const sequelize = require('../config/database');
 const { Application, Property, Payment } = require('../Models');
 const ApiError = require('../utils/ApiError');
 
-const ALLOWED_PAYMENT_METHODS = ['card', 'wallet', 'cash', 'transfer'];
-const APP_STATUS = {
-  PENDING: 'pending',
-  APPROVED: 'approved',
-  REJECTED: 'rejected',
-  PAID: 'paid',
-  CHECKED_IN: 'checked_in',
-  COMPLETED: 'completed',
-};
+const {APP_STATUS, paymentMethods} = require('../config/constants');
 
 class ApplicationService {
   // Create an application by a student
+  /**
+   * example
+   * body{
+   *  "propertyId":1,
+   *  "isForSharing":false,
+   *  "message":"I want to find a flatmate",
+   *  "totalAmount":1000,
+   * }
+   */
   static async createApplication(student, { propertyId, isForSharing = false, message, totalAmount }) {
     if (student.role !== 'student') throw new ApiError('Only students can create applications', 403);
 
@@ -86,7 +87,7 @@ class ApplicationService {
   // Student initiates payment
   static async initiatePayment(student, applicationId, { method }) {
     if (student.role !== 'student') throw new ApiError('Forbidden', 403);
-    if (!ALLOWED_PAYMENT_METHODS.includes(method)) throw new ApiError('Invalid payment method', 400);
+    if (!paymentMethods.includes(method)) throw new ApiError('Invalid payment method', 400);
 
     return await sequelize.transaction(async (t) => {
       const app = await Application.findByPk(applicationId, { transaction: t, lock: t.LOCK.UPDATE });

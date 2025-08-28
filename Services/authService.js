@@ -68,23 +68,25 @@ class AuthService {
             },
         });
 
-        if (email_not_taken || name_not_taken || phone_not_taken) {
-            if (
-                !email_not_taken.verified &&
-                new Date(email_not_taken.otp_expiry_time) > Date.now()
-            ) {
+        if (email_not_taken) {
+            if (!email_not_taken.verified &&
+                new Date(email_not_taken.otp_expiry_time) > Date.now()) {
                 // the account is not verified yet 
                 // it need to send an otp again
                 await this.sendOTP(email_not_taken.id);
                 return email_not_taken.id;
             }
-            if (
-                !email_not_taken.verified &&
-                new Date(email_not_taken.otp_expiry_time) < Date.now()
-            ) {
+            if (!email_not_taken.verified &&
+                new Date(email_not_taken.otp_expiry_time) < Date.now()) {
                 throw new ApiError("You Need To verfiy your account", 400);
             }
-            throw new ApiError("you already have an account try logging in", 400);
+            throw new ApiError("your email is already taken", 400);
+        }
+        if (name_not_taken) {
+            throw new ApiError("your username is already taken", 400);
+        }
+        if (phone_not_taken) {
+            throw new ApiError("your phone number is already taken", 400);
         }
     }
 
