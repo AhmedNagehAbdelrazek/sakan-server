@@ -1,5 +1,6 @@
 const { Model, DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
+const { applicationStatus } = require('../config/constants');
 
 class Application extends Model { }
 
@@ -38,7 +39,7 @@ Application.init({
         allowNull: true,
     },
     status: {
-        type: DataTypes.ENUM('pending', 'approved', 'rejected'),
+        type: DataTypes.ENUM(...applicationStatus),
         allowNull: false,
         defaultValue: 'pending',
     },},{

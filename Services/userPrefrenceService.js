@@ -2,7 +2,7 @@ const {UserPreference} = require('../Models/index.js');
 const ApiError = require('../utils/ApiError.js');
 class UserPreferenceService {
     static async getPreferences(userId) {
-        const preferences = await UserPreference.findByPk(userId,{
+        const preferences = await UserPreference.findOne({where:{userId}},{
             attributes: ["theme", "notification", "language"],
         });
         if (!preferences) {
@@ -29,9 +29,10 @@ class UserPreferenceService {
             },
             {
                 where: { userId: preferences.userId }
-            },
+            }
         );
-            return preferences; 
+            await preferences.reload();
+            return preferences;
         }catch (error) {
             throw new ApiError(error.message, 500);
         }

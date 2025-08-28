@@ -69,7 +69,7 @@ User.init({
   },
   passwordChangedAt:{
     type: DataTypes.DATE,
-    defaultValue: Date.now(),
+    defaultValue: DataTypes.NOW,
     field: 'password_changed_at'
   },
   role: {

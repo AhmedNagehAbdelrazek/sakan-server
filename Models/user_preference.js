@@ -4,6 +4,13 @@ const sequelize = require('../config/database');
 class UserPreference extends Model {}
 
 UserPreference.init({
+  id: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true,
+    allowNull: false,
+    field: 'id',
+  },
   userId: {
     type: DataTypes.UUID,
     references: {

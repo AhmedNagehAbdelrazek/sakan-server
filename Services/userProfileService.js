@@ -14,7 +14,7 @@ class UserProfileService {
                 userId: userId,
             });
 
-            userProfile = UserProfile.findOne({
+            userProfile = await UserProfile.findOne({
                 where: { userId: userId },
                 attributes: ["firstName", "lastName", "bio", "profilePicture","university","gender","studyField","living_status","budget","location","locationCoordinates"],
             });
@@ -39,7 +39,7 @@ class UserProfileService {
     static async updateUserProfile(userId, data) {
         const userProfile = await UserProfile.findOne({
             where: { userId },
-            attributes: ["firstName", "lastName", "bio", "profilePicture","university","gender","studyField","living_status","budget","location","locationCoordinates"],
+            attributes: ["id","firstName", "lastName", "bio", "profilePicture","university","gender","studyField","living_status","budget","location","locationCoordinates"],
         });
         if (!userProfile) {
             throw new ApiError("User not found", 404);
@@ -57,8 +57,26 @@ class UserProfileService {
             "location",
             "locationCoordinates",
         ]);
-        await userProfile.update(updatedValues);
-        return userProfile;
+        try{
+            await UserProfile.update(updatedValues, {where:{userId}} );
+            await userProfile.reload();
+            const updatedProfile = PickExistVars(userProfile.toJSON(), [
+                "firstName",
+                "lastName",
+                "bio",
+                "profilePicture",
+                "university",
+                "gender",
+                "studyField",
+                "living_status",
+                "budget",
+                "location",
+                "locationCoordinates",
+            ]);
+            return updatedProfile;
+        }catch(e){
+            throw new ApiError(e.message, 500);
+        }
     }
 }
 

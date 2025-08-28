@@ -5,15 +5,22 @@ const { living_status, gender } = require('../config/constants');
 class UserProfile extends Model {}
 
 UserProfile.init({
+  id: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true,
+    allowNull: false,
+    field: 'id',
+  },
   userId: {
     type: DataTypes.UUID,
-    primaryKey: true,
+    allowNull: false,
     references: {
       model: 'users',
       key: 'id',
     },
     onDelete: 'CASCADE',
-    field: 'userid',
+    field: 'user_id',
   },
   firstName: {
     type: DataTypes.STRING,

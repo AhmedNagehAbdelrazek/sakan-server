@@ -7,6 +7,7 @@ const jwt = require('jsonwebtoken');
 const generateOTP = require('../utils/GenerateOTP.js');
 const sendEmail = require('../Services/Mailer.js');
 const { Op } = require("sequelize");
+const crypto = require("crypto");
 
 async function signToken(userId) {
   const user = await User.findByPk(userId);
@@ -195,7 +196,7 @@ class AuthService {
         const resetToken = foundUser.createPasswordResetToken();
         const front_reset_password_url = process.env.FRONTEND_RESET_PASSWORD_URL;
         const resetUrl = `${front_reset_password_url}/?token=${resetToken}`;
-
+        console.log(resetToken);
         try {
             await User.update(
                 {
