@@ -1,6 +1,6 @@
 const { Model, DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const { paymentMethods, paymentStatus } = require('../config/constants');
+const { paymentMethods, paymentStatus, currency } = require('../config/constants');
 
 class Payment extends Model {}
 
@@ -56,11 +56,7 @@ Payment.init({
         allowNull: true,
     },
     currency: {
-        type: DataTypes.STRING,
-        allowNull: false,
-    },
-    paymentDate: {
-        type: DataTypes.DATE,
+        type: DataTypes.ENUM(...currency),
         allowNull: false,
     },
     releaseDate: {

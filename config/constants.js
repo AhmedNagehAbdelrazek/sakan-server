@@ -18,5 +18,6 @@ module.exports = {
         PAID: 'paid',
         CHECKED_IN: 'checked_in',
         COMPLETED: 'completed',
-    }
+    },
+    currency:["EGP","USD"]
 };

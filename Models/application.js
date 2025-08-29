@@ -38,6 +38,11 @@ Application.init({
         type: DataTypes.TEXT,
         allowNull: true,
     },
+    totalAmount: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        defaultValue: 0,
+    },
     status: {
         type: DataTypes.ENUM(...applicationStatus),
         allowNull: false,

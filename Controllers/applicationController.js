@@ -33,7 +33,7 @@ exports.reject = asyncHandler(async (req, res) => {
 });
 
 exports.pay = asyncHandler(async (req, res) => {
-  const out = await ApplicationService.initiatePayment(req.user, req.params.id, { method: req.body.method });
+  const out = await ApplicationService.initiatePayment(req.user, req.params.id, { method: req.body.method , currency: req.body.currency || "EGP" });
   res.json(out);
 });
 

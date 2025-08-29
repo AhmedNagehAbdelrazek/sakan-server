@@ -85,7 +85,7 @@ class ApplicationService {
   }
 
   // Student initiates payment
-  static async initiatePayment(student, applicationId, { method }) {
+  static async initiatePayment(student, applicationId, { method , currency }) {
     if (student.role !== 'student') throw new ApiError('Forbidden', 403);
     if (!paymentMethods.includes(method)) throw new ApiError('Invalid payment method', 400);
 
@@ -106,6 +106,7 @@ class ApplicationService {
         amount: app.totalAmount,
         status: 'pending',
         method,
+        currency,
       }, { transaction: t });
 
       return { application: app, payment };
@@ -202,7 +203,7 @@ class ApplicationService {
     const { rows, count } = await Application.findAndCountAll({
       where,
       include,
-      order: [['createdAt', 'DESC']],
+      order: [['createdat', 'DESC']],
       limit: l,
       offset,
     });
@@ -212,7 +213,14 @@ class ApplicationService {
 
   // Fetch single application with access control
   static async getById(user, applicationId) {
-    const app = await Application.findByPk(applicationId, { include: [{ model: Property }] });
+    const app = await Application.findByPk(applicationId,{
+      include:[{
+        model:Property,
+        as:'Property',
+        // required:true,
+        // attributes:['id','title','userId'],
+      }]
+    });
     if (!app) throw new ApiError('Application not found', 404);
 
     if (user.role === 'admin') return app;

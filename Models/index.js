@@ -57,6 +57,9 @@ Property.belongsTo(User, { foreignKey: "userId" });
 User.hasMany(Application, { foreignKey: "userId" });
 Application.belongsTo(User, { foreignKey: "userId" });
 
+Property.hasOne(Application, {foreignKey:'propertyId'} );
+Application.belongsTo(Property,{foreignKey:'propertyId'});
+
 User.hasMany(Payment, { foreignKey: "studentId" });
 Payment.belongsTo(User, { foreignKey: "studentId" });
 
