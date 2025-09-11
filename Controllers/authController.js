@@ -19,7 +19,7 @@ exports.SignUp = asyncHandler(async (req, res, next) => {
   await authService.checkUserDoesNotExists({username, email, phone});
 
   
-    const user = await authService.register({username, email, role, password, phone});
+    const user = await authService.register(req.body);
     req.userId = user.id;
     next();
 
