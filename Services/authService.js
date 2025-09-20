@@ -1,5 +1,5 @@
 
-const { User, UserPreference, UserProfile } = require('../Models/index.js');
+const { User, UserPreference, UserProfile, sequelize } = require('../Models/index.js');
 const PickExistVars = require('../utils/PickExistVars.js');
 const ApiError = require('../utils/ApiError.js');
 const bcrypt = require('bcrypt');
@@ -10,31 +10,32 @@ const { Op } = require("sequelize");
 const crypto = require("crypto");
 
 async function signToken(userId) {
-  const user = await User.findByPk(userId);
+    const user = await User.findByPk(userId);
 
-  const payload = {
-    id: user.id,
-    username: user.username,
-    role: user.role,
-  };
+    const payload = {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+    };
 
-  return jwt.sign(payload, process.env.JWT_SECRET_KEY);
+    return jwt.sign(payload, process.env.JWT_SECRET_KEY);
 }
 
 class AuthService {
     static async register(data) {
         const { username, password, email, role, phone } = data;
+        const t = await sequelize.transaction();
         const newUser = await User.create({
             username,
             password_hash: password,
             email,
             role,
             phone,
-        });
+        }, { transaction: t });
         // create the prefrances model to the user
         await UserPreference.create({
             userId: newUser.id,
-        });
+        }, { transaction: t });
 
         const foundData = PickExistVars(data,
             ['firstName', 'lastName', 'bio', 'university', 'gender', 'studyField', 'living_status', 'budget', 'location', 'locationCoordinates']
@@ -43,7 +44,9 @@ class AuthService {
         await UserProfile.create({
             userId: newUser.id,
             ...foundData
-        });
+        }, { transaction: t });
+
+        await t.commit();
         return newUser;
     }
 
@@ -95,33 +98,44 @@ class AuthService {
             where: {
                 email,
             },
+            attributes: { include: ["id","email", "verified", "otp", "otp_expiry_time","role"] },
         });
-
         if (!user) {
             throw new ApiError("User not found", 404);
         }
+        if (!user.verified) {
+            if (user.otp && new Date(user.otp_expiry_time) < Date.now()) {
+                throw new ApiError("You have already requested an OTP, verify your account", 400);
+            } else {
+                this.sendOTP(user.id);
+                throw new ApiError("your old token is expired, a new one has been sent to your email, check your email", 400);
+            }
+        }
+
         const isPasswordCorrect = await bcrypt.compare(password, user.password_hash);
         if (!isPasswordCorrect) {
             throw new ApiError("Password are wrong!", 404);
         }
 
         const token = await signToken(user.id);
-        return token;
+        return {
+            user,
+            role: user.role,
+            token
+        };
     }
 
     static async sendOTP(userId) {
-        const user = await User.findByPk(userId);
+        const user = await User.findByPk(userId,{
+            attributes: { include: ["id","email", "verified", "otp", "otp_expiry_time","role"] },
+        });
 
         if (user.verified) {
             throw new ApiError("Email is already verified", 400);
         }
 
         // if the token date is not expired
-        if (
-            !user.verified &&
-            user.otp &&
-            new Date(user.otp_expiry_time) < Date.now()
-        ) {
+        if (!user.verified && user.otp && new Date(user.otp_expiry_time) < Date.now()) {
             throw new ApiError("You have already requested an OTP", 400);
         }
 
@@ -141,7 +155,9 @@ class AuthService {
         if (affectedCount[0] == 0) {
             throw new ApiError("User not found", 404);
         }
-        const updatedUser = await User.findByPk(userId);
+        const updatedUser = await User.findByPk(userId,{
+            attributes: { include: ["id","email"] },
+        });
         // TODO send mail
         sendEmail(updatedUser.email, "Verification OTP", `Your OTP is ${new_otp}`);
     }
@@ -183,7 +199,11 @@ class AuthService {
             }
         );
         const token = await signToken(user.id);
-        return token;
+        return {
+            user,
+            role: user.role,
+            token
+        };
     }
 
     static async forgotPassword(email) {
@@ -289,7 +309,11 @@ class AuthService {
         );
 
         const token = await signToken(foundUser.id);
-        return token;
+        return {
+            user: foundUser,
+            role: foundUser.role,
+            token
+        };
     }
 }
 

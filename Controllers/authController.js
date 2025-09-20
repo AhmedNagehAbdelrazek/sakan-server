@@ -39,20 +39,20 @@ exports.verifyOTP = asyncHandler(async (req, res) => {
   // verify OTP and update user record accordingly
   const { email, otp } = req.body;
 
-  const token = await authService.verifyOTP(email, otp);
+  const result = await authService.verifyOTP(email, otp);
 
   res.status(200).json({
     message: "OTP verified successfully",
-    token,
+    ...result,
   });
 });
 
 exports.login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  const token = await authService.login(email, password);
+  const result = await authService.login(email, password);
 
-  return res.status(200).json({ token });
+  return res.status(200).json({ ...result });
 });
 
 exports.forgotPassword = asyncHandler(async (req, res) => {
@@ -70,11 +70,11 @@ exports.resetPassword = asyncHandler(async (req, res) => {
   //get the new password and the user by Token
   const resetToken = req.query.token || req.body.token;
   const { password } = req.body;
-  const token = await authService.resetPassword(resetToken, password);
+  const result = await authService.resetPassword(resetToken, password);
 
   return res.status(200).json({
     status: "success",
     message: "Password Reseted successfully",
-    token,
+    ...result,
   });
 });

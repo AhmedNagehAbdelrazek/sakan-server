@@ -4,7 +4,7 @@ var transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
     user: "ahmednagh2005@gmail.com",
-    pass: "sjss xtnm hrji rlap",
+    pass: "mzue fvni xwsg fzwb",
   },
 });
 function sendEmail(to,subject,message){
@@ -24,7 +24,7 @@ function sendEmail(to,subject,message){
         } else {
           console.log("Email sent: " + info.response);
         }
-      });
+    });
 }
 
 
