@@ -4,6 +4,7 @@ const { loginValidator } = require("../utils/validators/authValidator");
 const router = require("express").Router();
 
 router.post("/register", SignUp , sendOTP);
+router.post("/sendOtp", sendOTP);
 router.post("/login", loginValidator, login);
 router.post("/verfiyOtp", verifyOTP);
 router.post("/forgotpassword", forgotPassword);

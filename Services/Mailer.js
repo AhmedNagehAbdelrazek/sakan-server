@@ -1,10 +1,11 @@
 var nodemailer = require('nodemailer');
+require("dotenv").config();
 
 var transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "ahmednagh2005@gmail.com",
-    pass: "mzue fvni xwsg fzwb",
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   },
 });
 function sendEmail(to,subject,message){
@@ -12,7 +13,7 @@ function sendEmail(to,subject,message){
   // better option is to log the message in the log for ONLY TESTING!
   // return;
     var mailOptions = {
-        from: "ahmednagh2005@gmail.com",
+        from: process.env.EMAIL_USER,
         to: to,
         subject: subject,
         text: message,

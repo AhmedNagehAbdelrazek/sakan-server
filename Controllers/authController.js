@@ -3,6 +3,7 @@ const asyncHandler = require("express-async-handler");
 const ApiError = require("../utils/ApiError");
 const { signin_roles } = require("../config/constants.js");
 const authService = require("../Services/authService.js");
+const User = require("../Models/user.js");
 
 // =========== Controllers ============
 
@@ -26,7 +27,16 @@ exports.SignUp = asyncHandler(async (req, res, next) => {
 });
 
 exports.sendOTP = asyncHandler(async (req, res) => {
-  const { userId } = req;
+  const userId = req.userId;
+  
+  if (!userId) {
+    const { email } = req.body;
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return new ApiError("User not found", 404);
+    }
+    req.userId = user.id;
+  }
 
   await authService.sendOTP(userId);
 
