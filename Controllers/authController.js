@@ -27,15 +27,18 @@ exports.SignUp = asyncHandler(async (req, res, next) => {
 });
 
 exports.sendOTP = asyncHandler(async (req, res) => {
-  const userId = req.userId;
-  
+  let userId = req.userId;
+  console.log(Date.now());
+  console.log(new Date('2025-09-23 17:38:20.309+03').getTime());
+  console.log(new Date('2025-09-23 17:47:20.309+03').getTime() > Date.now());
+
   if (!userId) {
     const { email } = req.body;
     const user = await User.findOne({ where: { email } });
     if (!user) {
       return new ApiError("User not found", 404);
     }
-    req.userId = user.id;
+    userId = user.id;
   }
 
   await authService.sendOTP(userId);

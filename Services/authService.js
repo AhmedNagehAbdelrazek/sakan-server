@@ -130,18 +130,23 @@ class AuthService {
             attributes: { include: ["id","email", "verified", "otp", "otp_expiry_time","role"] },
         });
 
+        if (!user) {
+            throw new ApiError("User not found", 404);
+        }
+
         if (user.verified) {
             throw new ApiError("Email is already verified", 400);
         }
-
+        
         // if the token date is not expired
-        if (!user.verified && user.otp && new Date(user.otp_expiry_time) < Date.now()) {
+        if (!user.verified && user.otp && new Date(user.otp_expiry_time).getTime() > Date.now()) {
             throw new ApiError("You have already requested an OTP", 400);
         }
 
         const new_otp = generateOTP(6);
         console.log(new_otp);
-        const otp_expiry_time = Date.now() + 5 * 60 * 1000; // 5 Mins after otp is sent
+        // const otp_expiry_time = Date.now() + 5 * 60 * 1000; // 5 Mins after otp is sent
+        const otp_expiry_time = Date.now(); // 5 Mins after otp is sent
 
         const affectedCount = await User.update(
             { otp: new_otp, otp_expiry_time },
