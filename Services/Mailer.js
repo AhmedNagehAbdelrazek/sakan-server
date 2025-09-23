@@ -1,5 +1,7 @@
 var nodemailer = require('nodemailer');
+const ApiError = require('../utils/ApiError');
 require("dotenv").config();
+
 
 var transporter = nodemailer.createTransport({
   service: "gmail",
@@ -12,6 +14,7 @@ function sendEmail(to,subject,message){
   //if you want to use the email for testing you can comment the return 
   // better option is to log the message in the log for ONLY TESTING!
   // return;
+  try{
     var mailOptions = {
         from: process.env.EMAIL_USER,
         to: to,
@@ -26,6 +29,9 @@ function sendEmail(to,subject,message){
           console.log("Email sent: " + info.response);
         }
     });
+  }catch(e){
+    throw new ApiError(e.message, 500);
+  }
 }
 
 
