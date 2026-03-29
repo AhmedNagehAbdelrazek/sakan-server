@@ -48,8 +48,8 @@ Payment.init({
     },
     method: {
         type: DataTypes.ENUM(...paymentMethods),
-        allowNull: false,
-        defaultValue: paymentMethods[0],
+        allowNull: true,
+        defaultValue: null,
     },
     providerPaymentId: {
         type: DataTypes.STRING,
@@ -59,9 +59,25 @@ Payment.init({
         type: DataTypes.ENUM(...currency),
         allowNull: false,
     },
-    releaseDate: {
+    receivedAt: {
         type: DataTypes.DATE,
         allowNull: true,
+        field: 'received_at',
+    },
+    receivedBy: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        field: 'received_by',
+    },
+    releasedAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        field: 'released_at',
+    },
+    releasedBy: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        field: 'released_by',
     },
     
 },{

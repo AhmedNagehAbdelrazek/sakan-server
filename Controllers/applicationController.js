@@ -33,11 +33,19 @@ exports.reject = asyncHandler(async (req, res) => {
 });
 
 exports.pay = asyncHandler(async (req, res) => {
-  const out = await ApplicationService.initiatePayment(req.user, req.params.id, { method: req.body.method , currency: req.body.currency || "EGP" });
+  const payload = {};
+  if (req.body.method !== undefined) payload.method = req.body.method;
+  if (req.body.currency !== undefined) payload.currency = req.body.currency;
+  const out = await ApplicationService.initiatePayment(req.user, req.params.id, payload);
   res.json(out);
 });
 
 exports.checkIn = asyncHandler(async (req, res) => {
   const app = await ApplicationService.checkIn(req.user, req.params.id);
+  res.json(app);
+});
+
+exports.complete = asyncHandler(async (req, res) => {
+  const app = await ApplicationService.complete(req.user, req.params.id);
   res.json(app);
 });

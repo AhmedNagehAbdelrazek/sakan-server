@@ -5,7 +5,7 @@ const {createPropertyValidator,updatePropertyValidator,nearbyValidator,handleVal
 const verifyRole = require('../utils/verifyRole');
 
 router.get('/nearby', protect, nearbyValidator, handleValidation, nearbyCount);
-router.get('/', protect, verifyRole('admin', 'landlord'), listProperties);
+router.get('/', protect, verifyRole('admin', 'landlord', 'student'), listProperties);
 
 router.post('/', protect, verifyRole('landlord'), createPropertyValidator, handleValidation, createProperty);
 router.get('/:id', protect, getProperty);

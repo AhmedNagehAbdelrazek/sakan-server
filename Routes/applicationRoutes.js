@@ -1,8 +1,8 @@
 // /Routes/applicationRoutes.js
 const router = require('express').Router();
 const protect = require('../middlewares/protect');
-const {create,list,getOne,approve,reject,pay,checkIn} = require('../Controllers/applicationController');
-const {createApplicationValidator,approveValidator,rejectValidator,payValidator,checkInValidator,handleValidation,} = require('../utils/validators/applicationValidator');
+const {create,list,getOne,approve,reject,pay,checkIn,complete} = require('../Controllers/applicationController');
+const {createApplicationValidator,approveValidator,rejectValidator,payValidator,checkInValidator,completeValidator,handleValidation,} = require('../utils/validators/applicationValidator');
 const verifyRole = require('../utils/verifyRole');
 
 // Create application (student)
@@ -23,5 +23,8 @@ router.patch('/:id/pay', protect, verifyRole('student'), payValidator, handleVal
 
 // Check-in (student)
 router.patch('/:id/checkin', protect, verifyRole('student'), checkInValidator, handleValidation, checkIn);
+
+// Complete (admin)
+router.patch('/:id/complete', protect, verifyRole('admin'), completeValidator, handleValidation, complete);
 
 module.exports = router;

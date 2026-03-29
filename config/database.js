@@ -14,7 +14,7 @@ async function validateDatabase() {
         dialectOptions: {
         },
         ...dbConfig,
-        database:null
+        database: "postgres"
     });
 
     try {
@@ -49,20 +49,28 @@ async function validateDatabase() {
     }
 }
 
-validateDatabase().then(() => {
-    // db connection
-    sequelize
-    .sync({alter: true,
-        force:false
-    })
-    .then(() => {
+/**
+ * Initializes the database connection and (optionally) runs Sequelize sync.
+ *
+ * IMPORTANT:
+ * - This function must be called by the runtime entrypoint (server) explicitly.
+ * - Tests can import models without triggering DB connections as a side-effect.
+ */
+async function initDatabase({ sync = true, syncOptions = { alter: true, force: false } } = {}) {
+    await validateDatabase();
+
+    if (!sync) return sequelize;
+
+    try {
+        await sequelize.sync(syncOptions);
         console.log("Database synchronized");
-    })
-    .catch((err) => {
+    } catch (err) {
         console.error("Unable to synchronize the database:", err);
-    });
-}).catch((err) => {
-    console.error("Unable to synchronize the database:", err);
-});
+        throw err;
+    }
+
+    return sequelize;
+}
 
 module.exports = sequelize;
+module.exports.initDatabase = initDatabase;

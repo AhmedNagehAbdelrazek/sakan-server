@@ -1,5 +1,5 @@
 // /Services/propertyService.js
-const { QueryTypes } = require('sequelize');
+const { QueryTypes, Op } = require('sequelize');
 const sequelize = require('../config/database');
 const { Property, User } = require('../Models');
 const ApiError = require('../utils/ApiError');
@@ -106,6 +106,30 @@ class PropertyService {
       offset,
     });
     return { items: rows, page: p, limit: l, total: count };
+  }
+
+  static async listForStudent(user, { page = 1, limit = 20 } = {}) {
+    const p = Number(page);
+    const l = Number(limit);
+
+    if (user.role !== 'student') {
+      throw new ApiError('Forbidden', 403);
+    }
+
+    const offset = (p - 1) * l;
+    const { rows, count } = await Property.findAndCountAll({
+      where: {
+        isActive: true,
+        // blocked/unavailable when remaining capacity <= 0
+        availableRooms: { [Op.gt]: 0 },
+      },
+      order: [['createdat', 'DESC']],
+      limit: l,
+      offset,
+    });
+
+    const masked = rows.map(maskForNonOwner);
+    return { items: masked, page: p, limit: l, total: count };
   }
 
   static async getByIdForViewer(user, id) {

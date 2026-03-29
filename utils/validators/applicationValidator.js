@@ -1,5 +1,6 @@
 // /utils/validators/applicationValidator.js
 const { body, query, param, validationResult } = require('express-validator');
+const { paymentMethods, currency } = require('../../config/constants');
 
 const createApplicationValidator = [
   body('propertyId').isUUID().withMessage('propertyId must be a valid UUID'),
@@ -19,10 +20,21 @@ const rejectValidator = [
 
 const payValidator = [
   param('id').isUUID(),
-  body('method').isIn(['card', 'wallet', 'cash', 'transfer']).withMessage('Invalid payment method'),
+  body('method')
+    .optional({ nullable: true })
+    .isIn(paymentMethods)
+    .withMessage('Invalid payment method'),
+  body('currency')
+    .optional({ nullable: true })
+    .isIn(currency)
+    .withMessage('Invalid currency'),
 ];
 
 const checkInValidator = [
+  param('id').isUUID(),
+];
+
+const completeValidator = [
   param('id').isUUID(),
 ];
 
@@ -38,5 +50,6 @@ module.exports = {
   rejectValidator,
   payValidator,
   checkInValidator,
+  completeValidator,
   handleValidation,
 };

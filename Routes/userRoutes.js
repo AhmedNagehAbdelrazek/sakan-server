@@ -4,6 +4,7 @@ const { getpreferneces, updatePreferences } = require('../Controllers/userPrefer
 const { getUserActivities, getUserActivity, logUserActivity } = require('../Controllers/activitiesController');
 const verifyRole = require("../utils/verifyRole");
 const { getUserProfile, updateUserProfile } = require("../Controllers/userProfileController");
+const notificationRoutes = require('./notificationRoutes');
 const router = require("express").Router();
 
 
@@ -20,6 +21,9 @@ router.post("/activities",protect,logUserActivity);
 // user profile routes
 router.get("/profile", protect, getUserProfile);
 router.patch("/profile", protect, updateUserProfile);
+
+// notifications history routes
+router.use('/notifications', notificationRoutes);
 
 module.exports = router;
 

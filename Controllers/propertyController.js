@@ -9,11 +9,17 @@ exports.createProperty = asyncHandler(async (req, res) => {
 
 exports.listProperties = asyncHandler(async (req, res) => {
   const { page, limit, isActive } = req.query;
-  const result = await PropertyService.listForUser(req.user, {
+  const paging = {
     page: page ? Number(page) : 1,
     limit: limit ? Number(limit) : 20,
-    isActive: typeof isActive === 'undefined' ? true : isActive === 'true',
-  });
+  };
+
+  const result = req.user.role === 'student'
+    ? await PropertyService.listForStudent(req.user, paging)
+    : await PropertyService.listForUser(req.user, {
+        ...paging,
+        isActive: typeof isActive === 'undefined' ? true : isActive === 'true',
+      });
   res.json(result);
 });
 

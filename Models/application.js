@@ -47,7 +47,38 @@ Application.init({
         type: DataTypes.ENUM(...applicationStatus),
         allowNull: false,
         defaultValue: 'pending',
-    },},{
+    },
+    approvedBy: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        field: 'approved_by',
+    },
+    approvedAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        field: 'approved_at',
+    },
+    approvalExpiresAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        field: 'approval_expires_at',
+    },
+    paidAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        field: 'paid_at',
+    },
+    checkedInAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        field: 'checked_in_at',
+    },
+    completedAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        field: 'completed_at',
+    },
+}, {
     sequelize,
     modelName: 'Application',
     tableName: 'applications',

@@ -149,7 +149,7 @@ class AuthService {
 
     static async sendOTP(userId) {
         const user = await User.findByPk(userId,{
-            attributes: { include: ["id","email", "verified", "otp", "otp_expiry_time","role"] },
+            attributes: { include: ["id","email", "verified", "otp", "otp_expiry_time","role","countryCode","phone"] },
         });
 
         if (!user) {
@@ -172,7 +172,7 @@ class AuthService {
 
         // TODO send mail
         // await sendEmail(user.email, "Verification OTP", `Your OTP is ${new_otp}`);
-        await sendSMS(user.phone, `Your OTP is ${new_otp}`);
+        await sendSMS(user.countryCode,user.phone, `Your OTP is ${new_otp}`);
 
         const affectedCount = await User.update(
             { otp: new_otp, otp_expiry_time },

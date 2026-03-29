@@ -1,40 +1,40 @@
-const { Notification } = require("../Models/index");
-const UserPreference = require('./models/userPreference');
+const { Notification, UserPreference } = require("../Models/index");
 
-async function notification(io, { event, userId, message, type, roomId = "notification" }) {
-try {
-    // Fetch user preferences
-    const userPreference = await UserPreference.findOne({ where: { userId } });
+async function notification(io, { event, userId, message, type, roomId }) {
+    try {
+        const resolvedRoomId = roomId || `notifications_${userId}`;
+        const eventToEmit = event || 'notification';
 
-    // Proceed if user has notifications enabled
-    if (userPreference?.notification) {
-    // Create a new notification in the database
-    const newNotification = await Notification.create({
-        userId,
-        notificationType: type,
-        notificationContent: {
-        title: message.title,
-        body: message.body,
-        },
-    });
+        // Fetch user preferences (default: enabled if no record exists yet)
+        const userPreference = await UserPreference.findOne({ where: { userId } });
+        const notificationsEnabled = userPreference ? !!userPreference.notification : true;
 
-    // Determine event to emit, defaulting to roomId if event isn't passed
-    const eventToEmit = event || roomId;
+        // Always persist durable notification history (contract requirement)
+        const newNotification = await Notification.create({
+            userId,
+            notificationType: type,
+            notificationContent: {
+                title: message?.title,
+                body: message?.body,
+            },
+        });
 
-    // Emit notification to the room or event
-    io.to(roomId).emit(eventToEmit, {
-        userId,
-        type: newNotification.notificationType,
-        content: newNotification.notificationContent,
-    });
+        if (notificationsEnabled && io) {
+            io.to(resolvedRoomId).emit(eventToEmit, {
+                id: newNotification.id,
+                userId,
+                type: newNotification.notificationType,
+                content: newNotification.notificationContent,
+                read: newNotification.read,
+                createdAt: newNotification.createdAt,
+            });
+        }
 
-    console.log(`Notification sent to user ${userId} in room ${roomId} via event: ${eventToEmit}`);
-    } else {
-    console.log(`Notifications are disabled for user ${userId}`);
+        return newNotification;
+    } catch (error) {
+        console.error('Error sending notification:', error);
+        throw error;
     }
-} catch (error) {
-    console.error('Error sending notification:', error);
-}
 }
 
 module.exports = notification;

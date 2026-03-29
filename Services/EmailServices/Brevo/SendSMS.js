@@ -1,16 +1,19 @@
 const { BrevoClient } = require('@getbrevo/brevo');
-const dotenv = require('dotenv');
-dotenv.config({ path: ".env" });
+// Avoid loading real `.env` during tests; Jest setup is responsible for env.
+if (process.env.NODE_ENV !== 'test') {
+    // eslint-disable-next-line global-require
+    require('dotenv').config({ path: '.env' });
+}
 // Initialize Brevo client
 const brevo = new BrevoClient({
     apiKey: process.env.BREVO_API_KEY, // Replace with your actual API key
 });
 
-async function sendSMS(phoneNumber, message) {
+async function sendSMS( countryCode,phoneNumber, message) {
     try {
         const response = await brevo.transactionalSms.sendAsyncTransactionalSms({
             sender: "Sakan",
-            recipient: "+2"+phoneNumber,
+            recipient: countryCode + phoneNumber,
             content: message,
             type: "transactional",
             tag: "otp-verification"
