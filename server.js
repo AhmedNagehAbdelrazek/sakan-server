@@ -30,3 +30,11 @@ io.use(authenticate);
 server.listen(PORT, async () => {
   console.log(`Server is running on port ${PORT}`);
 });
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled Rejection:', reason);
+});

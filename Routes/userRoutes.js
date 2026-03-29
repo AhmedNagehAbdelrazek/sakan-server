@@ -7,7 +7,7 @@ const { getUserProfile, updateUserProfile } = require("../Controllers/userProfil
 const router = require("express").Router();
 
 
-router.get("/",protect,verifyRole(['admin']), getAllUsers);
+router.get("/",protect,verifyRole('admin'), getAllUsers);
 router.get("/me",protect, getMe);
 
 //user preferences routes

@@ -5,9 +5,30 @@ const ApiError = require('../utils/ApiError.js');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const generateOTP = require('../utils/GenerateOTP.js');
-const sendEmail = require('../Services/Mailer.js');
+const sendEmail = require('./EmailServices/Brevo/SendEmail.js');
+const sendSMS = require('./EmailServices/Brevo/SendSMS.js');
 const { Op } = require("sequelize");
 const crypto = require("crypto");
+
+const SAFE_USER_FIELDS = [
+    "id",
+    "username",
+    "email",
+    "phone",
+    "countryCode",
+    "role",
+    "verified",
+];
+
+function toSafeUser(user) {
+    if (!user) return null;
+    const plain = typeof user.get === "function" ? user.get({ plain: true }) : user;
+    const safe = {};
+    for (const key of SAFE_USER_FIELDS) {
+        if (plain[key] !== undefined) safe[key] = plain[key];
+    }
+    return safe;
+}
 
 async function signToken(userId) {
     const user = await User.findByPk(userId);
@@ -23,14 +44,15 @@ async function signToken(userId) {
 
 class AuthService {
     static async register(data) {
-        const { username, password, email, role, phone } = data;
+        const { username, password, email, role, phone , countryCode} = data;
         const t = await sequelize.transaction();
         const newUser = await User.create({
             username,
             password_hash: password,
             email,
-            role,
             phone,
+            countryCode,
+            role,
         }, { transaction: t });
         // create the prefrances model to the user
         await UserPreference.create({
@@ -47,7 +69,7 @@ class AuthService {
         }, { transaction: t });
 
         await t.commit();
-        return newUser;
+        return toSafeUser(newUser);
     }
 
     static async checkUserDoesNotExists(user) {
@@ -104,10 +126,10 @@ class AuthService {
             throw new ApiError("User not found", 404);
         }
         if (!user.verified) {
-            if (user.otp && new Date(user.otp_expiry_time) < Date.now()) {
+            if (user.otp && new Date(user.otp_expiry_time) > Date.now()) {
                 throw new ApiError("You have already requested an OTP, verify your account", 400);
             } else {
-                this.sendOTP(user.id);
+                await this.sendOTP(user.id);
                 throw new ApiError("your old token is expired, a new one has been sent to your email, check your email", 400);
             }
         }
@@ -119,7 +141,7 @@ class AuthService {
 
         const token = await signToken(user.id);
         return {
-            user,
+            user: toSafeUser(user),
             role: user.role,
             token
         };
@@ -145,8 +167,12 @@ class AuthService {
 
         const new_otp = generateOTP(6);
         console.log(new_otp);
-        // const otp_expiry_time = Date.now() + 5 * 60 * 1000; // 5 Mins after otp is sent
-        const otp_expiry_time = Date.now(); // 5 Mins after otp is sent
+        const otp_expiry_time = Date.now() + 5 * 60 * 1000; // 5 Mins after otp is sent
+        // const otp_expiry_time = Date.now(); // 5 Mins after otp is sent
+
+        // TODO send mail
+        // await sendEmail(user.email, "Verification OTP", `Your OTP is ${new_otp}`);
+        await sendSMS(user.phone, `Your OTP is ${new_otp}`);
 
         const affectedCount = await User.update(
             { otp: new_otp, otp_expiry_time },
@@ -160,25 +186,26 @@ class AuthService {
         if (affectedCount[0] == 0) {
             throw new ApiError("User not found", 404);
         }
-        const updatedUser = await User.findByPk(userId,{
+        await User.findByPk(userId,{
             attributes: { include: ["id","email"] },
         });
-        // TODO send mail
-        sendEmail(updatedUser.email, "Verification OTP", `Your OTP is ${new_otp}`);
+        
     }
 
     static async verifyOTP(email, otp) {
         const user = await User.findOne({
             where: {
                 email,
-                otp_expiry_time: {
-                    [Op.gt]: Date.now(),
-                },
+                
             },
         });
 
         if (!user) {
             throw new ApiError("Email is invalid or OTP is expired", 400);
+        }
+
+        if (!user.otp_expiry_time || user.otp_expiry_time.getTime() < Date.now()) {
+            throw new ApiError("OTP is expired, Please request a new one", 400);
         }
 
         if (user.verified) {
@@ -203,10 +230,12 @@ class AuthService {
                 individualHooks: true,
             }
         );
+
+        const verifiedUser = await User.findByPk(user.id);
         const token = await signToken(user.id);
         return {
-            user,
-            role: user.role,
+            user: toSafeUser(verifiedUser || user),
+            role: (verifiedUser || user).role,
             token
         };
     }
@@ -238,7 +267,7 @@ class AuthService {
                 }
             );
 
-            sendEmail(
+            await sendEmail(
                 foundUser.email,
                 "Reset Password",
                 `Your Reset Password Link is ${resetUrl}`
@@ -307,16 +336,17 @@ class AuthService {
         );
 
         // Login the user and send Jwt
-        sendEmail(
+        await sendEmail(
             foundUser.email,
             "Password Changed",
             `Your password has been changed successfully`
         );
 
+        const updatedUser = await User.findByPk(foundUser.id);
         const token = await signToken(foundUser.id);
         return {
-            user: foundUser,
-            role: foundUser.role,
+            user: toSafeUser(updatedUser || foundUser),
+            role: (updatedUser || foundUser).role,
             token
         };
     }

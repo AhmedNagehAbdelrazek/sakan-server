@@ -63,6 +63,11 @@ User.init({
       },
     }
   },
+  countryCode:{
+    type: DataTypes.STRING,
+    allowNull: false,
+    defaultValue: "+20"
+  },
   password_hash: {
     type: DataTypes.TEXT,
     allowNull: false,

@@ -1,4 +1,4 @@
-const notificationService = require('../services/notificationService');
+const notificationService = require('../Services/notificationService');
 const { User } = require("../Models/index");
 
 module.exports = (io, socket) => {
