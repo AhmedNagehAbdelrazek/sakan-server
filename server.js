@@ -1,24 +1,15 @@
-const express = require("express");
 const dotenv = require("dotenv");
-const morgan = require("morgan");
 const http = require('http');
 const socketServer = require('./socketServer');
 const authenticate = require("./middlewares/socketAuthentacation");
 
-const mainRoute = require("./Routes/index");
-const globalErrorHandler = require("./middlewares/globalErrorHandler");
+const sequelize = require('./config/database');
+
+const { createApp } = require('./app');
 
 dotenv.config({ path: ".env" });
 
-const app = express();
-
-app.use(express.json());
-app.use(morgan("dev"));
-
-// main system route
-app.use("/api", mainRoute);
-
-app.use(globalErrorHandler);
+const app = createApp();
 
 const PORT = process.env.PORT || 3000;
 
@@ -26,9 +17,18 @@ const server = http.createServer(app);
 const io = socketServer(server);
 io.use(authenticate);
 
+async function start() {
+  // Explicit DB init (no side-effects on import)
+  await sequelize.initDatabase();
 
-server.listen(PORT, async () => {
-  console.log(`Server is running on port ${PORT}`);
+  server.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+}
+
+start().catch((err) => {
+  console.error('Failed to start server:', err);
+  process.exitCode = 1;
 });
 
 process.on('uncaughtException', (err) => {

@@ -1,6 +1,9 @@
 const { BrevoClient } = require('@getbrevo/brevo');
-const dotenv = require('dotenv');
-dotenv.config({ path: ".env" });
+// Avoid loading real `.env` during tests; Jest setup is responsible for env.
+if (process.env.NODE_ENV !== 'test') {
+    // eslint-disable-next-line global-require
+    require('dotenv').config({ path: '.env' });
+}
 // Initialize Brevo client
 const brevo = new BrevoClient({
     apiKey: process.env.BREVO_API_KEY, // Replace with your actual API key

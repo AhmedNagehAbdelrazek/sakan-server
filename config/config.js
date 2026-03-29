@@ -1,4 +1,8 @@
-require('dotenv').config();
+// Runtime entrypoints (e.g., server.js) are responsible for loading environment variables.
+// Avoid loading real `.env` during tests; Jest setup loads `.env.test` instead.
+if (process.env.NODE_ENV !== 'test') {
+  require('dotenv').config();
+}
 
 // Function to parse DATABASE_URL
 const parseDatabaseUrl = (url) => {
@@ -38,6 +42,7 @@ module.exports = {
   },
   test: {
     ...config,
+    logging: false,
     define: {
       createdAt: "createdat",
       updatedAt: "updatedat"

@@ -3,8 +3,34 @@ const { Op } = require('sequelize');
 const sequelize = require('../config/database');
 const { Application, Property, Payment } = require('../Models');
 const ApiError = require('../utils/ApiError');
+const { getSupportContact } = require('../config/support');
+const notify = require('./notificationService');
 
-const {APP_STATUS, paymentMethods} = require('../config/constants');
+const {APP_STATUS, paymentMethods, currency: supportedCurrencies} = require('../config/constants');
+
+function isApprovalExpired(app, now = new Date()) {
+  if (!app) return false;
+  if (app.status !== APP_STATUS.APPROVED) return false;
+  if (!app.approvalExpiresAt) return false;
+  return new Date(app.approvalExpiresAt).getTime() < now.getTime();
+}
+
+async function restoreOneRoom({ propertyId, transaction }) {
+  const property = await Property.findByPk(propertyId, {
+    transaction,
+    lock: transaction.LOCK.UPDATE,
+  });
+  if (!property) return null;
+
+  const total = Number(property.totalRooms);
+  const avail = Number(property.availableRooms);
+  const nextAvail = Number.isFinite(total)
+    ? Math.min(avail + 1, total)
+    : avail + 1;
+
+  await property.update({ availableRooms: nextAvail }, { transaction });
+  return property;
+}
 
 class ApplicationService {
   // Create an application by a student
@@ -65,7 +91,20 @@ class ApplicationService {
       if (!property || !property.isActive) throw new ApiError('Property not available', 400);
       if (Number(property.availableRooms) <= 0) throw new ApiError('No available rooms', 400);
 
-      await app.update({ status: APP_STATUS.APPROVED, approvedBy: admin.id }, { transaction: t });
+      // Decrement capacity within the same transaction to prevent overbooking.
+      await property.update({ availableRooms: Number(property.availableRooms) - 1 }, { transaction: t });
+
+      const approvedAt = new Date();
+      const approvalExpiresAt = new Date(approvedAt.getTime() + 24 * 60 * 60 * 1000);
+      await app.update(
+        {
+          status: APP_STATUS.APPROVED,
+          approvedBy: admin.id,
+          approvedAt,
+          approvalExpiresAt,
+        },
+        { transaction: t }
+      );
       return app;
     });
   }
@@ -87,12 +126,31 @@ class ApplicationService {
   // Student initiates payment
   static async initiatePayment(student, applicationId, { method , currency }) {
     if (student.role !== 'student') throw new ApiError('Forbidden', 403);
-    if (!paymentMethods.includes(method)) throw new ApiError('Invalid payment method', 400);
+    if (method != null && !paymentMethods.includes(method)) throw new ApiError('Invalid payment method', 400);
+
+    const paymentCurrency = currency || 'EGP';
+    if (paymentCurrency != null && !supportedCurrencies.includes(paymentCurrency)) {
+      throw new ApiError('Invalid currency', 400);
+    }
 
     return await sequelize.transaction(async (t) => {
       const app = await Application.findByPk(applicationId, { transaction: t, lock: t.LOCK.UPDATE });
       if (!app) throw new ApiError('Application not found', 404);
       if (app.userId !== student.id) throw new ApiError('You can only pay for your own application', 403);
+
+      // Expire stale approvals before payment attempts.
+      if (isApprovalExpired(app)) {
+        await restoreOneRoom({ propertyId: app.propertyId, transaction: t });
+        await app.update(
+          {
+            status: APP_STATUS.REJECTED,
+            message: 'Approval expired',
+          },
+          { transaction: t }
+        );
+        throw new ApiError('Approval expired', 400);
+      }
+
       if (app.status !== APP_STATUS.APPROVED) throw new ApiError('Application must be approved before payment', 400);
 
       const property = await Property.findByPk(app.propertyId, { transaction: t });
@@ -105,8 +163,8 @@ class ApplicationService {
         landlordId: property.userId,
         amount: app.totalAmount,
         status: 'pending',
-        method,
-        currency,
+        method: method ?? null,
+        currency: paymentCurrency,
       }, { transaction: t });
 
       return { application: app, payment };
@@ -156,7 +214,35 @@ class ApplicationService {
       if (app.userId !== student.id) throw new ApiError('You can only check in for your own application', 403);
       if (app.status !== APP_STATUS.PAID) throw new ApiError('Application must be paid before check-in', 400);
 
-      await app.update({ status: APP_STATUS.CHECKED_IN }, { transaction: t });
+      const now = new Date();
+      await app.update({ status: APP_STATUS.CHECKED_IN, checkedInAt: now }, { transaction: t });
+
+      // Durable notifications (emit optional)
+      try {
+        const property = await Property.findByPk(app.propertyId, { transaction: t });
+
+        await notify(null, {
+          userId: app.userId,
+          type: 'application_checked_in',
+          message: {
+            title: 'Check-in confirmed',
+            body: 'Your check-in has been recorded successfully.',
+          },
+        });
+
+        if (property) {
+          await notify(null, {
+            userId: property.userId,
+            type: 'application_checked_in',
+            message: {
+              title: 'Student checked in',
+              body: 'A student has checked in for one of your applications.',
+            },
+          });
+        }
+      } catch (e) {
+        console.error('Notification error (check-in):', e);
+      }
       return app;
     });
   }
@@ -170,7 +256,35 @@ class ApplicationService {
       if (!app) throw new ApiError('Application not found', 404);
       if (app.status !== APP_STATUS.CHECKED_IN) throw new ApiError('Only checked_in applications can be completed', 400);
 
-      await app.update({ status: APP_STATUS.COMPLETED }, { transaction: t });
+      const now = new Date();
+      await app.update({ status: APP_STATUS.COMPLETED, completedAt: now }, { transaction: t });
+
+      // Durable notifications (emit optional)
+      try {
+        const property = await Property.findByPk(app.propertyId, { transaction: t });
+
+        await notify(null, {
+          userId: app.userId,
+          type: 'application_completed',
+          message: {
+            title: 'Application completed',
+            body: 'Your rental flow has been completed.',
+          },
+        });
+
+        if (property) {
+          await notify(null, {
+            userId: property.userId,
+            type: 'application_completed',
+            message: {
+              title: 'Application completed',
+              body: 'An application for one of your properties has been completed.',
+            },
+          });
+        }
+      } catch (e) {
+        console.error('Notification error (complete):', e);
+      }
       return app;
     });
   }
@@ -208,26 +322,128 @@ class ApplicationService {
       offset,
     });
 
-    return { items: rows, page: p, limit: l, total: count };
+    // Ensure expiry logic is observable on read paths.
+    const now = new Date();
+    const expiredIds = rows
+      .filter((app) => isApprovalExpired(app, now))
+      .map((app) => app.id);
+
+    if (expiredIds.length === 0) {
+      return { items: rows, page: p, limit: l, total: count };
+    }
+
+    // Expire sequentially (small batches expected) then re-query for consistent results.
+    for (const id of expiredIds) {
+      // eslint-disable-next-line no-await-in-loop
+      await ApplicationService.expireApprovalIfNeeded(id);
+    }
+
+    const refreshed = await Application.findAndCountAll({
+      where,
+      include,
+      order: [['createdat', 'DESC']],
+      limit: l,
+      offset,
+    });
+
+    return { items: refreshed.rows, page: p, limit: l, total: refreshed.count };
   }
 
   // Fetch single application with access control
   static async getById(user, applicationId) {
-    const app = await Application.findByPk(applicationId,{
-      include:[{
-        model:Property,
-        as:'Property',
-        // required:true,
-        // attributes:['id','title','userId'],
-      }]
+    const fetchApp = () => Application.findByPk(applicationId,{
+      include:[
+        {
+          model:Property,
+          as:'Property',
+        },
+        {
+          model: Payment,
+        },
+      ]
     });
+
+    let app = await fetchApp();
     if (!app) throw new ApiError('Application not found', 404);
 
-    if (user.role === 'admin') return app;
-    if (user.role === 'student' && app.userId === user.id) return app;
-    if (user.role === 'landlord' && app.Property && app.Property.userId === user.id) return app;
+    // Ensure expiry logic is observable on read paths.
+    if (isApprovalExpired(app)) {
+      await ApplicationService.expireApprovalIfNeeded(app.id);
+      app = await fetchApp();
+      if (!app) throw new ApiError('Application not found', 404);
+    }
 
-    throw new ApiError('Forbidden', 403);
+    const isAdmin = user.role === 'admin';
+    const isStudentOwner = user.role === 'student' && app.userId === user.id;
+    const isLandlordOwner = user.role === 'landlord' && app.Property && app.Property.userId === user.id;
+    if (!isAdmin && !isStudentOwner && !isLandlordOwner) {
+      throw new ApiError('Forbidden', 403);
+    }
+
+    // Serialize and enrich with stable, user-facing derived fields.
+    const data = app.toJSON();
+
+    // Students must never see the exact address in-app.
+    if (user.role === 'student' && data.Property) {
+      data.Property.address = null;
+    }
+
+    // After approval (and beyond), instruct student to contact support for exact details.
+    if (
+      user.role === 'student' &&
+      [APP_STATUS.APPROVED, APP_STATUS.PAID, APP_STATUS.CHECKED_IN, APP_STATUS.COMPLETED].includes(data.status)
+    ) {
+      data.contactSupport = {
+        message: 'Contact Sakan Support to receive check-in details.',
+        contact: getSupportContact(),
+      };
+    }
+
+    const payments = Array.isArray(data.Payments) ? data.Payments : [];
+    const receiptCandidate = payments
+      .filter((p) => p && (p.status === 'received' || p.status === 'released'))
+      .sort((a, b) => {
+        const aTime = new Date(a.receivedAt || a.createdat || 0).getTime();
+        const bTime = new Date(b.receivedAt || b.createdat || 0).getTime();
+        return bTime - aTime;
+      })[0];
+
+    if (receiptCandidate) {
+      data.receipt = {
+        paymentId: receiptCandidate.id,
+        amount: receiptCandidate.amount,
+        currency: receiptCandidate.currency,
+        status: receiptCandidate.status,
+        receivedAt: receiptCandidate.receivedAt || null,
+        applicationId: data.id,
+        propertyId: data.propertyId,
+      };
+    }
+
+    return data;
+  }
+
+  /**
+   * Expires an approved application if its approval window has passed.
+   * Restores the associated property's availableRooms by 1 (capped by totalRooms).
+   */
+  static async expireApprovalIfNeeded(applicationId) {
+    return sequelize.transaction(async (t) => {
+      const app = await Application.findByPk(applicationId, { transaction: t, lock: t.LOCK.UPDATE });
+      if (!app) return null;
+      if (!isApprovalExpired(app)) return app;
+
+      await restoreOneRoom({ propertyId: app.propertyId, transaction: t });
+      await app.update(
+        {
+          status: APP_STATUS.REJECTED,
+          message: 'Approval expired',
+        },
+        { transaction: t }
+      );
+
+      return app;
+    });
   }
 }
 

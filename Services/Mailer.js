@@ -1,7 +1,11 @@
 var nodemailer = require('nodemailer');
 const { google } = require("googleapis");
 const ApiError = require('../utils/ApiError');
-require("dotenv").config();
+// Avoid loading real `.env` during tests; Jest setup is responsible for env.
+if (process.env.NODE_ENV !== 'test') {
+  // eslint-disable-next-line global-require
+  require('dotenv').config();
+}
 
 
 const oAuth2Client = new google.auth.OAuth2(

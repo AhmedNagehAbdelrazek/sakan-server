@@ -1,0 +1,1189 @@
+{
+  "info": {
+    "_postman_id": "b6c6e9b2-3fd6-4d1b-9f7f-9c98578cf2d9",
+    "name": "Sakan Server API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Sakan Server REST API collection ({{baseUrl}}). Includes saved example responses so frontend can see response shapes.\n\nAuth: Most endpoints require Bearer token. After running Verify OTP or Login, the collection will store the token into the collection variable {{token}}."
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000", "type": "string" },
+    { "key": "token", "value": "", "type": "string" },
+    { "key": "propertyId", "value": "", "type": "string" },
+    { "key": "applicationId", "value": "", "type": "string" },
+    { "key": "paymentId", "value": "", "type": "string" },
+    { "key": "flatmateRequestId", "value": "", "type": "string" },
+    { "key": "joinInterestId", "value": "", "type": "string" },
+    { "key": "notificationId", "value": "", "type": "string" },
+    { "key": "activityId", "value": "", "type": "string" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{token}}", "type": "string" }
+    ]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register (creates user then sends OTP)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"student1\",\n  \"email\": \"student1@example.com\",\n  \"password\": \"Password123!\",\n  \"phone\": \"01000000000\",\n  \"countryCode\": \"+20\",\n  \"role\": \"student\"\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "200 OTP sent",
+              "originalRequest": { "method": "POST", "url": { "raw": "{{baseUrl}}/api/auth/register" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"message\": \"The verify code Sent to your Email\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Send OTP",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/auth/sendOtp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"student1@example.com\"\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "200 OTP sent",
+              "originalRequest": { "method": "POST", "url": { "raw": "{{baseUrl}}/api/auth/sendOtp" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"message\": \"The verify code Sent to your Email\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Verify OTP (stores {{token}})",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.token) pm.collectionVariables.set('token', json.token);",
+                  "  if (json.user && json.user.id) pm.collectionVariables.set('userId', json.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/auth/verfiyOtp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"student1@example.com\",\n  \"otp\": \"123456\"\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "200 Verified + token",
+              "originalRequest": { "method": "POST", "url": { "raw": "{{baseUrl}}/api/auth/verfiyOtp" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"message\": \"OTP verified successfully\",\n  \"user\": {\n    \"id\": \"0d8b86d0-9b85-4d24-9d3a-5a3b22a8a1e1\",\n    \"username\": \"student1\",\n    \"email\": \"student1@example.com\",\n    \"phone\": \"01000000000\",\n    \"countryCode\": \"+20\",\n    \"role\": \"student\",\n    \"verified\": true\n  },\n  \"role\": \"student\",\n  \"token\": \"eyJhbGciOi...\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Login (stores {{token}})",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.token) pm.collectionVariables.set('token', json.token);",
+                  "  if (json.user && json.user.id) pm.collectionVariables.set('userId', json.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"student1@example.com\",\n  \"password\": \"Password123!\"\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "200 Login success",
+              "originalRequest": { "method": "POST", "url": { "raw": "{{baseUrl}}/api/auth/login" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"user\": {\n    \"id\": \"0d8b86d0-9b85-4d24-9d3a-5a3b22a8a1e1\",\n    \"username\": \"student1\",\n    \"email\": \"student1@example.com\",\n    \"phone\": \"01000000000\",\n    \"countryCode\": \"+20\",\n    \"role\": \"student\",\n    \"verified\": true\n  },\n  \"role\": \"student\",\n  \"token\": \"eyJhbGciOi...\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Forgot password",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/auth/forgotpassword",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"student1@example.com\"\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "200 Reset link sent",
+              "originalRequest": { "method": "POST", "url": { "raw": "{{baseUrl}}/api/auth/forgotpassword" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"status\": \"success\",\n  \"message\": \"Reset Password link sent to email\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Reset password",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/auth/resetpassword",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"RESET_TOKEN_FROM_EMAIL\",\n  \"password\": \"NewPassword123!\"\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "200 Password reset + token",
+              "originalRequest": { "method": "POST", "url": { "raw": "{{baseUrl}}/api/auth/resetpassword" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"status\": \"success\",\n  \"message\": \"Password Reseted successfully\",\n  \"user\": {\n    \"id\": \"0d8b86d0-9b85-4d24-9d3a-5a3b22a8a1e1\",\n    \"username\": \"student1\",\n    \"email\": \"student1@example.com\",\n    \"phone\": \"01000000000\",\n    \"countryCode\": \"+20\",\n    \"role\": \"student\",\n    \"verified\": true\n  },\n  \"role\": \"student\",\n  \"token\": \"eyJhbGciOi...\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Admin: List users",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/user"
+          },
+          "response": [
+            {
+              "name": "200 Users list",
+              "originalRequest": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/user" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "[\n  {\n    \"id\": \"1b9f9db8-1c6a-4f4e-9f0a-5b5e6ed1f6e1\",\n    \"username\": \"admin1\",\n    \"email\": \"admin1@example.com\",\n    \"role\": \"admin\"\n  },\n  {\n    \"id\": \"0d8b86d0-9b85-4d24-9d3a-5a3b22a8a1e1\",\n    \"username\": \"student1\",\n    \"email\": \"student1@example.com\",\n    \"role\": \"student\"\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Get me",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/user/me"
+          },
+          "response": [
+            {
+              "name": "200 Me",
+              "originalRequest": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/user/me" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": \"0d8b86d0-9b85-4d24-9d3a-5a3b22a8a1e1\",\n  \"username\": \"student1\",\n  \"email\": \"student1@example.com\",\n  \"role\": \"student\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get preferences",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/user/preferences"
+          },
+          "response": [
+            {
+              "name": "200 Preferences",
+              "originalRequest": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/user/preferences" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": \"7bde4f7e-1ed3-4e9c-ae1e-f4aab0a9a222\",\n  \"userId\": \"0d8b86d0-9b85-4d24-9d3a-5a3b22a8a1e1\",\n  \"theme\": \"light\",\n  \"notification\": true,\n  \"language\": \"en\",\n  \"createdAt\": \"2026-01-01T10:00:00.000Z\",\n  \"updatedAt\": \"2026-01-01T10:00:00.000Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update preferences",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/user/preferences",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"theme\": \"dark\",\n  \"notification\": true,\n  \"language\": \"en\"\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "200 Preferences updated",
+              "originalRequest": { "method": "PATCH", "url": { "raw": "{{baseUrl}}/api/user/preferences" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": \"7bde4f7e-1ed3-4e9c-ae1e-f4aab0a9a222\",\n  \"userId\": \"0d8b86d0-9b85-4d24-9d3a-5a3b22a8a1e1\",\n  \"theme\": \"dark\",\n  \"notification\": true,\n  \"language\": \"en\",\n  \"createdAt\": \"2026-01-01T10:00:00.000Z\",\n  \"updatedAt\": \"2026-01-02T10:00:00.000Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get profile",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/user/profile"
+          },
+          "response": [
+            {
+              "name": "200 Profile",
+              "originalRequest": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/user/profile" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"firstName\": \"Mariam\",\n  \"lastName\": \"Ali\",\n  \"bio\": \"Computer science student\",\n  \"profilePicture\": null,\n  \"university\": \"Cairo University\",\n  \"gender\": \"female\",\n  \"studyField\": \"CS\",\n  \"living_status\": \"alone\",\n  \"budget\": 5000,\n  \"location\": \"Dokki\",\n  \"locationCoordinates\": {\n    \"lat\": 30.0444,\n    \"lng\": 31.2357\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/user/profile",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Mariam\",\n  \"lastName\": \"Ali\",\n  \"budget\": 6000\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "200 Profile updated",
+              "originalRequest": { "method": "PATCH", "url": { "raw": "{{baseUrl}}/api/user/profile" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"firstName\": \"Mariam\",\n  \"lastName\": \"Ali\",\n  \"bio\": \"Computer science student\",\n  \"profilePicture\": null,\n  \"university\": \"Cairo University\",\n  \"gender\": \"female\",\n  \"studyField\": \"CS\",\n  \"living_status\": \"alone\",\n  \"budget\": 6000,\n  \"location\": \"Dokki\",\n  \"locationCoordinates\": {\n    \"lat\": 30.0444,\n    \"lng\": 31.2357\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "My activities (list)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/user/activities?page=1&limit=20"
+          },
+          "response": [
+            {
+              "name": "200 Activities list",
+              "originalRequest": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/user/activities?page=1&limit=20" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "[\n  {\n    \"id\": 10,\n    \"userId\": \"0d8b86d0-9b85-4d24-9d3a-5a3b22a8a1e1\",\n    \"activityType\": \"login\",\n    \"activityDetails\": {\n      \"ip\": \"127.0.0.1\"\n    },\n    \"timestamp\": \"2026-01-01T10:00:00.000Z\",\n    \"createdAt\": \"2026-01-01T10:00:00.000Z\",\n    \"updatedAt\": \"2026-01-01T10:00:00.000Z\"\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "My activity (by id)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/user/activities/{{activityId}}"
+          },
+          "response": [
+            {
+              "name": "200 Activity",
+              "originalRequest": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/user/activities/{{activityId}}" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": 10,\n  \"userId\": \"0d8b86d0-9b85-4d24-9d3a-5a3b22a8a1e1\",\n  \"activityType\": \"login\",\n  \"activityDetails\": {\n    \"ip\": \"127.0.0.1\"\n  },\n  \"timestamp\": \"2026-01-01T10:00:00.000Z\",\n  \"createdAt\": \"2026-01-01T10:00:00.000Z\",\n  \"updatedAt\": \"2026-01-01T10:00:00.000Z\",\n  \"User\": {\n    \"username\": \"student1\",\n    \"email\": \"student1@example.com\",\n    \"role\": \"student\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Log activity",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json && json.id) pm.collectionVariables.set('activityId', String(json.id));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/user/activities",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"activityType\": \"login\",\n  \"activityDetails\": {\n    \"ip\": \"127.0.0.1\"\n  }\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "201 Activity created",
+              "originalRequest": { "method": "POST", "url": { "raw": "{{baseUrl}}/api/user/activities" } },
+              "status": "Created",
+              "code": 201,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": 11,\n  \"userId\": \"0d8b86d0-9b85-4d24-9d3a-5a3b22a8a1e1\",\n  \"activityType\": \"login\",\n  \"activityDetails\": {\n    \"ip\": \"127.0.0.1\"\n  },\n  \"timestamp\": \"2026-01-01T10:00:00.000Z\",\n  \"createdAt\": \"2026-01-01T10:00:00.000Z\",\n  \"updatedAt\": \"2026-01-01T10:00:00.000Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "My notifications (history)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  const first = json && json.data && json.data[0];",
+                  "  if (first && first.id != null) pm.collectionVariables.set('notificationId', String(first.id));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/user/notifications?page=1&limit=20"
+          },
+          "response": [
+            {
+              "name": "200 Notifications",
+              "originalRequest": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/user/notifications?page=1&limit=20" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"page\": 1,\n  \"limit\": 20,\n  \"total\": 1,\n  \"data\": [\n    {\n      \"id\": 1,\n      \"userId\": \"0d8b86d0-9b85-4d24-9d3a-5a3b22a8a1e1\",\n      \"notificationType\": \"payment_received\",\n      \"notificationContent\": {\n        \"title\": \"Payment received\",\n        \"body\": \"Your payment has been confirmed by Sakan Support.\"\n      },\n      \"read\": false,\n      \"createdAt\": \"2026-01-01T10:00:00.000Z\",\n      \"updatedAt\": \"2026-01-01T10:00:00.000Z\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Mark notification read",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/user/notifications/{{notificationId}}/read"
+          },
+          "response": [
+            {
+              "name": "200 Marked read",
+              "originalRequest": { "method": "PATCH", "url": { "raw": "{{baseUrl}}/api/user/notifications/{{notificationId}}/read" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"data\": {\n    \"id\": 1,\n    \"userId\": \"0d8b86d0-9b85-4d24-9d3a-5a3b22a8a1e1\",\n    \"notificationType\": \"payment_received\",\n    \"notificationContent\": {\n      \"title\": \"Payment received\",\n      \"body\": \"Your payment has been confirmed by Sakan Support.\"\n    },\n    \"read\": true,\n    \"createdAt\": \"2026-01-01T10:00:00.000Z\",\n    \"updatedAt\": \"2026-01-01T10:05:00.000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Mark all notifications read",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/user/notifications/read-all"
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": { "method": "PATCH", "url": { "raw": "{{baseUrl}}/api/user/notifications/read-all" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"ok\": true\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Activities (Admin)",
+      "item": [
+        {
+          "name": "Admin: List activities",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/activities?page=1&limit=20"
+          },
+          "response": [
+            {
+              "name": "200 Activities",
+              "originalRequest": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/activities?page=1&limit=20" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "[\n  {\n    \"id\": 1,\n    \"userId\": \"0d8b86d0-9b85-4d24-9d3a-5a3b22a8a1e1\",\n    \"activityType\": \"login\",\n    \"activityDetails\": {\n      \"ip\": \"127.0.0.1\"\n    },\n    \"timestamp\": \"2026-01-01T10:00:00.000Z\",\n    \"createdAt\": \"2026-01-01T10:00:00.000Z\",\n    \"updatedAt\": \"2026-01-01T10:00:00.000Z\",\n    \"User\": {\n      \"username\": \"student1\",\n      \"email\": \"student1@example.com\",\n      \"role\": \"student\"\n    }\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Admin: Get activity",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/activities/{{activityId}}"
+          },
+          "response": [
+            {
+              "name": "200 Activity",
+              "originalRequest": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/activities/{{activityId}}" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": 1,\n  \"userId\": \"0d8b86d0-9b85-4d24-9d3a-5a3b22a8a1e1\",\n  \"activityType\": \"login\",\n  \"activityDetails\": {\n    \"ip\": \"127.0.0.1\"\n  },\n  \"timestamp\": \"2026-01-01T10:00:00.000Z\",\n  \"createdAt\": \"2026-01-01T10:00:00.000Z\",\n  \"updatedAt\": \"2026-01-01T10:00:00.000Z\",\n  \"User\": {\n    \"username\": \"student1\",\n    \"email\": \"student1@example.com\",\n    \"role\": \"student\"\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Properties",
+      "item": [
+        {
+          "name": "List properties",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/properties?page=1&limit=20"
+          },
+          "response": [
+            {
+              "name": "200 List (student example: address masked)",
+              "originalRequest": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/properties?page=1&limit=20" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"items\": [\n    {\n      \"id\": \"4e2b3c3c-7a1d-4d8a-b4c6-8f4e2dcd2c11\",\n      \"title\": \"Sunny apartment\",\n      \"description\": \"2 rooms near metro\",\n      \"pricePerMonth\": \"4500.00\",\n      \"totalRooms\": 2,\n      \"availableRooms\": 1,\n      \"type\": \"apartment\",\n      \"locationLat\": \"30.0444000\",\n      \"locationLong\": \"31.2357000\",\n      \"address\": null,\n      \"amenities\": {\n        \"wifi\": true,\n        \"ac\": true\n      },\n      \"userId\": \"aa0c1d41-4f4a-4e52-9d49-6cf2c8e0a0aa\",\n      \"isActive\": true,\n      \"createdAt\": \"2026-01-01T10:00:00.000Z\",\n      \"updatedAt\": \"2026-01-01T10:00:00.000Z\"\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20,\n  \"total\": 1\n}"
+            }
+          ]
+        },
+        {
+          "name": "Nearby properties count",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/properties/nearby?lat=30.0444&long=31.2357&radiusKm=5"
+          },
+          "response": [
+            {
+              "name": "200 Count",
+              "originalRequest": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/properties/nearby?lat=30.0444&long=31.2357&radiusKm=5" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"count\": 3\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create property (landlord)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json && json.id) pm.collectionVariables.set('propertyId', json.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/properties",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Sunny apartment\",\n  \"description\": \"2 rooms near metro\",\n  \"pricePerMonth\": 4500,\n  \"totalRooms\": 2,\n  \"availableRooms\": 2,\n  \"type\": \"apartment\",\n  \"locationLat\": 30.0444,\n  \"locationLong\": 31.2357,\n  \"address\": \"12 Tahrir St, Cairo\",\n  \"amenities\": {\n    \"wifi\": true,\n    \"ac\": true\n  }\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "201 Property created",
+              "originalRequest": { "method": "POST", "url": { "raw": "{{baseUrl}}/api/properties" } },
+              "status": "Created",
+              "code": 201,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": \"4e2b3c3c-7a1d-4d8a-b4c6-8f4e2dcd2c11\",\n  \"title\": \"Sunny apartment\",\n  \"description\": \"2 rooms near metro\",\n  \"pricePerMonth\": \"4500.00\",\n  \"totalRooms\": 2,\n  \"availableRooms\": 2,\n  \"type\": \"apartment\",\n  \"locationLat\": \"30.0444000\",\n  \"locationLong\": \"31.2357000\",\n  \"address\": \"12 Tahrir St, Cairo\",\n  \"amenities\": {\n    \"wifi\": true,\n    \"ac\": true\n  },\n  \"userId\": \"aa0c1d41-4f4a-4e52-9d49-6cf2c8e0a0aa\",\n  \"isActive\": true,\n  \"createdAt\": \"2026-01-01T10:00:00.000Z\",\n  \"updatedAt\": \"2026-01-01T10:00:00.000Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get property",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/properties/{{propertyId}}"
+          },
+          "response": [
+            {
+              "name": "200 Property",
+              "originalRequest": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/properties/{{propertyId}}" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": \"4e2b3c3c-7a1d-4d8a-b4c6-8f4e2dcd2c11\",\n  \"title\": \"Sunny apartment\",\n  \"description\": \"2 rooms near metro\",\n  \"pricePerMonth\": \"4500.00\",\n  \"totalRooms\": 2,\n  \"availableRooms\": 2,\n  \"type\": \"apartment\",\n  \"locationLat\": \"30.0444000\",\n  \"locationLong\": \"31.2357000\",\n  \"address\": null,\n  \"amenities\": {\n    \"wifi\": true,\n    \"ac\": true\n  },\n  \"userId\": \"aa0c1d41-4f4a-4e52-9d49-6cf2c8e0a0aa\",\n  \"isActive\": true,\n  \"createdAt\": \"2026-01-01T10:00:00.000Z\",\n  \"updatedAt\": \"2026-01-01T10:00:00.000Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update property (landlord/admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/properties/{{propertyId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"availableRooms\": 1\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "200 Property updated",
+              "originalRequest": { "method": "PATCH", "url": { "raw": "{{baseUrl}}/api/properties/{{propertyId}}" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": \"4e2b3c3c-7a1d-4d8a-b4c6-8f4e2dcd2c11\",\n  \"title\": \"Sunny apartment\",\n  \"description\": \"2 rooms near metro\",\n  \"pricePerMonth\": \"4500.00\",\n  \"totalRooms\": 2,\n  \"availableRooms\": 1,\n  \"type\": \"apartment\",\n  \"locationLat\": \"30.0444000\",\n  \"locationLong\": \"31.2357000\",\n  \"address\": \"12 Tahrir St, Cairo\",\n  \"amenities\": {\n    \"wifi\": true,\n    \"ac\": true\n  },\n  \"userId\": \"aa0c1d41-4f4a-4e52-9d49-6cf2c8e0a0aa\",\n  \"isActive\": true,\n  \"createdAt\": \"2026-01-01T10:00:00.000Z\",\n  \"updatedAt\": \"2026-01-02T10:00:00.000Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete property (soft)",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/properties/{{propertyId}}"
+          },
+          "response": [
+            {
+              "name": "200 Deleted",
+              "originalRequest": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/api/properties/{{propertyId}}" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"deleted\": true\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Applications",
+      "item": [
+        {
+          "name": "Create application (student)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json && json.id) pm.collectionVariables.set('applicationId', json.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/applications",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyId\": \"{{propertyId}}\",\n  \"isForSharing\": false,\n  \"message\": \"Interested\",\n  \"totalAmount\": 4500\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "201 Application created",
+              "originalRequest": { "method": "POST", "url": { "raw": "{{baseUrl}}/api/applications" } },
+              "status": "Created",
+              "code": 201,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": \"b2f9a22d-fb5f-4bd5-95ea-6b7d0f2a5f09\",\n  \"userId\": \"0d8b86d0-9b85-4d24-9d3a-5a3b22a8a1e1\",\n  \"propertyId\": \"4e2b3c3c-7a1d-4d8a-b4c6-8f4e2dcd2c11\",\n  \"isForSharing\": false,\n  \"message\": \"Interested\",\n  \"totalAmount\": \"4500.00\",\n  \"status\": \"pending\",\n  \"approvedBy\": null,\n  \"approvedAt\": null,\n  \"approvalExpiresAt\": null,\n  \"paidAt\": null,\n  \"checkedInAt\": null,\n  \"completedAt\": null,\n  \"createdAt\": \"2026-01-01T11:00:00.000Z\",\n  \"updatedAt\": \"2026-01-01T11:00:00.000Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "List applications",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/applications?page=1&limit=20"
+          },
+          "response": [
+            {
+              "name": "200 Applications list",
+              "originalRequest": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/applications?page=1&limit=20" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"items\": [\n    {\n      \"id\": \"b2f9a22d-fb5f-4bd5-95ea-6b7d0f2a5f09\",\n      \"userId\": \"0d8b86d0-9b85-4d24-9d3a-5a3b22a8a1e1\",\n      \"propertyId\": \"4e2b3c3c-7a1d-4d8a-b4c6-8f4e2dcd2c11\",\n      \"isForSharing\": false,\n      \"message\": \"Interested\",\n      \"totalAmount\": \"4500.00\",\n      \"status\": \"pending\"\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20,\n  \"total\": 1\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get application (enriched)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/applications/{{applicationId}}"
+          },
+          "response": [
+            {
+              "name": "200 Application (student view)",
+              "originalRequest": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/applications/{{applicationId}}" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": \"b2f9a22d-fb5f-4bd5-95ea-6b7d0f2a5f09\",\n  \"userId\": \"0d8b86d0-9b85-4d24-9d3a-5a3b22a8a1e1\",\n  \"propertyId\": \"4e2b3c3c-7a1d-4d8a-b4c6-8f4e2dcd2c11\",\n  \"status\": \"approved\",\n  \"totalAmount\": \"4500.00\",\n  \"Property\": {\n    \"id\": \"4e2b3c3c-7a1d-4d8a-b4c6-8f4e2dcd2c11\",\n    \"title\": \"Sunny apartment\",\n    \"address\": null\n  },\n  \"Payments\": [\n    {\n      \"id\": \"5c1a431c-3cf9-4b1f-a10b-3e69f1a2e5f7\",\n      \"applicationId\": \"b2f9a22d-fb5f-4bd5-95ea-6b7d0f2a5f09\",\n      \"amount\": \"4500.00\",\n      \"currency\": \"EGP\",\n      \"status\": \"received\"\n    }\n  ],\n  \"contactSupport\": {\n    \"message\": \"Contact Sakan Support to receive check-in details.\",\n    \"contact\": {\n      \"email\": \"support@example.com\",\n      \"phone\": \"+20...\"\n    }\n  },\n  \"receipt\": {\n    \"paymentId\": \"5c1a431c-3cf9-4b1f-a10b-3e69f1a2e5f7\",\n    \"amount\": \"4500.00\",\n    \"currency\": \"EGP\",\n    \"status\": \"received\",\n    \"receivedAt\": \"2026-01-01T12:00:00.000Z\",\n    \"applicationId\": \"b2f9a22d-fb5f-4bd5-95ea-6b7d0f2a5f09\",\n    \"propertyId\": \"4e2b3c3c-7a1d-4d8a-b4c6-8f4e2dcd2c11\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Admin: Approve application",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/applications/{{applicationId}}/approve"
+          },
+          "response": [
+            {
+              "name": "200 Approved",
+              "originalRequest": { "method": "PATCH", "url": { "raw": "{{baseUrl}}/api/applications/{{applicationId}}/approve" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": \"b2f9a22d-fb5f-4bd5-95ea-6b7d0f2a5f09\",\n  \"status\": \"approved\",\n  \"approvedBy\": \"1b9f9db8-1c6a-4f4e-9f0a-5b5e6ed1f6e1\",\n  \"approvedAt\": \"2026-01-01T11:05:00.000Z\",\n  \"approvalExpiresAt\": \"2026-01-02T11:05:00.000Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Admin: Reject application",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/applications/{{applicationId}}/reject",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Not eligible\"\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "200 Rejected",
+              "originalRequest": { "method": "PATCH", "url": { "raw": "{{baseUrl}}/api/applications/{{applicationId}}/reject" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": \"b2f9a22d-fb5f-4bd5-95ea-6b7d0f2a5f09\",\n  \"status\": \"rejected\",\n  \"message\": \"Not eligible\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Student: Initiate payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  if (json && json.payment && json.payment.id) pm.collectionVariables.set('paymentId', json.payment.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/applications/{{applicationId}}/pay",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"card\",\n  \"currency\": \"EGP\"\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "200 Payment initiated",
+              "originalRequest": { "method": "PATCH", "url": { "raw": "{{baseUrl}}/api/applications/{{applicationId}}/pay" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"application\": {\n    \"id\": \"b2f9a22d-fb5f-4bd5-95ea-6b7d0f2a5f09\",\n    \"status\": \"approved\",\n    \"totalAmount\": \"4500.00\"\n  },\n  \"payment\": {\n    \"id\": \"5c1a431c-3cf9-4b1f-a10b-3e69f1a2e5f7\",\n    \"applicationId\": \"b2f9a22d-fb5f-4bd5-95ea-6b7d0f2a5f09\",\n    \"studentId\": \"0d8b86d0-9b85-4d24-9d3a-5a3b22a8a1e1\",\n    \"landlordId\": \"aa0c1d41-4f4a-4e52-9d49-6cf2c8e0a0aa\",\n    \"amount\": \"4500.00\",\n    \"status\": \"pending\",\n    \"method\": \"card\",\n    \"currency\": \"EGP\",\n    \"receivedAt\": null,\n    \"releasedAt\": null\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Student: Check in",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/applications/{{applicationId}}/checkin"
+          },
+          "response": [
+            {
+              "name": "200 Checked in",
+              "originalRequest": { "method": "PATCH", "url": { "raw": "{{baseUrl}}/api/applications/{{applicationId}}/checkin" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": \"b2f9a22d-fb5f-4bd5-95ea-6b7d0f2a5f09\",\n  \"status\": \"checked_in\",\n  \"checkedInAt\": \"2026-01-01T13:00:00.000Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Admin: Complete application",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/applications/{{applicationId}}/complete"
+          },
+          "response": [
+            {
+              "name": "200 Completed",
+              "originalRequest": { "method": "PATCH", "url": { "raw": "{{baseUrl}}/api/applications/{{applicationId}}/complete" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": \"b2f9a22d-fb5f-4bd5-95ea-6b7d0f2a5f09\",\n  \"status\": \"completed\",\n  \"completedAt\": \"2026-01-02T10:00:00.000Z\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        {
+          "name": "List payments (landlord/admin)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/payments?page=1&limit=20"
+          },
+          "response": [
+            {
+              "name": "200 Payments list",
+              "originalRequest": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/payments?page=1&limit=20" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"items\": [\n    {\n      \"id\": \"5c1a431c-3cf9-4b1f-a10b-3e69f1a2e5f7\",\n      \"applicationId\": \"b2f9a22d-fb5f-4bd5-95ea-6b7d0f2a5f09\",\n      \"studentId\": \"0d8b86d0-9b85-4d24-9d3a-5a3b22a8a1e1\",\n      \"landlordId\": \"aa0c1d41-4f4a-4e52-9d49-6cf2c8e0a0aa\",\n      \"amount\": \"4500.00\",\n      \"status\": \"received\",\n      \"method\": \"card\",\n      \"currency\": \"EGP\",\n      \"receivedAt\": \"2026-01-01T12:00:00.000Z\",\n      \"receivedBy\": \"1b9f9db8-1c6a-4f4e-9f0a-5b5e6ed1f6e1\",\n      \"releasedAt\": null,\n      \"releasedBy\": null\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20,\n  \"total\": 1\n}"
+            }
+          ]
+        },
+        {
+          "name": "Admin: Mark payment received",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/payments/{{paymentId}}/receive"
+          },
+          "response": [
+            {
+              "name": "200 Marked received",
+              "originalRequest": { "method": "PATCH", "url": { "raw": "{{baseUrl}}/api/payments/{{paymentId}}/receive" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": \"5c1a431c-3cf9-4b1f-a10b-3e69f1a2e5f7\",\n  \"status\": \"received\",\n  \"receivedAt\": \"2026-01-01T12:00:00.000Z\",\n  \"receivedBy\": \"1b9f9db8-1c6a-4f4e-9f0a-5b5e6ed1f6e1\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Admin: Mark payment released",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/payments/{{paymentId}}/release"
+          },
+          "response": [
+            {
+              "name": "200 Marked released",
+              "originalRequest": { "method": "PATCH", "url": { "raw": "{{baseUrl}}/api/payments/{{paymentId}}/release" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": \"5c1a431c-3cf9-4b1f-a10b-3e69f1a2e5f7\",\n  \"status\": \"released\",\n  \"releasedAt\": \"2026-01-02T09:00:00.000Z\",\n  \"releasedBy\": \"1b9f9db8-1c6a-4f4e-9f0a-5b5e6ed1f6e1\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Flatmate Requests",
+      "item": [
+        {
+          "name": "Create flatmate request",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json && json.id) pm.collectionVariables.set('flatmateRequestId', json.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/flatmate-requests",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"preferredBudget\": 4000,\n  \"preferredType\": \"apartment\",\n  \"message\": \"Looking for a flatmate\",\n  \"peopleWanted\": 1,\n  \"radiusKm\": 10,\n  \"locationLat\": 30.0444,\n  \"locationLong\": 31.2357\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "201 Flatmate request created",
+              "originalRequest": { "method": "POST", "url": { "raw": "{{baseUrl}}/api/flatmate-requests" } },
+              "status": "Created",
+              "code": 201,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": \"0fa1eaa0-1a3a-4f1a-9c4b-2ab6b2a2b111\",\n  \"userId\": \"0d8b86d0-9b85-4d24-9d3a-5a3b22a8a1e1\",\n  \"preferredBudget\": \"4000.00\",\n  \"preferredType\": \"apartment\",\n  \"message\": \"Looking for a flatmate\",\n  \"peopleWanted\": 1,\n  \"radiusKm\": 10,\n  \"locationLat\": \"30.0444000\",\n  \"locationLong\": \"31.2357000\",\n  \"isMatched\": false,\n  \"createdAt\": \"2026-01-01T10:00:00.000Z\",\n  \"updatedAt\": \"2026-01-01T10:00:00.000Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Find matches",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/flatmate-requests/matches?page=1&limit=20"
+          },
+          "response": [
+            {
+              "name": "200 Matches",
+              "originalRequest": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/flatmate-requests/matches?page=1&limit=20" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"baseRequest\": {\n    \"id\": \"0fa1eaa0-1a3a-4f1a-9c4b-2ab6b2a2b111\",\n    \"preferredBudget\": \"4000.00\",\n    \"preferredType\": \"apartment\",\n    \"radiusKm\": 10\n  },\n  \"items\": [\n    {\n      \"id\": \"7f2c1e5a-7e1b-4c2f-b19b-7b4444444444\",\n      \"user_id\": \"22222222-2222-2222-2222-222222222222\",\n      \"preferred_budget\": 4200,\n      \"preferred_type\": \"apartment\",\n      \"people_wanted\": 1,\n      \"radius_km\": 8,\n      \"location_lat\": 30.045,\n      \"location_long\": 31.236,\n      \"is_matched\": false\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete my flatmate request",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/flatmate-requests/{{flatmateRequestId}}"
+          },
+          "response": [
+            {
+              "name": "200 Deleted",
+              "originalRequest": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/api/flatmate-requests/{{flatmateRequestId}}" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"deleted\": true\n}"
+            }
+          ]
+        },
+        {
+          "name": "Join interest",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json && json.id) pm.collectionVariables.set('joinInterestId', json.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/flatmate-requests/{{flatmateRequestId}}/join-interest",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Interested to connect\"\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "201 Join interest created",
+              "originalRequest": { "method": "POST", "url": { "raw": "{{baseUrl}}/api/flatmate-requests/{{flatmateRequestId}}/join-interest" } },
+              "status": "Created",
+              "code": 201,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": \"a7a2b4c9-9d7f-4d0c-9a9a-1f1e1e1e1e1e\",\n  \"requesterId\": \"0d8b86d0-9b85-4d24-9d3a-5a3b22a8a1e1\",\n  \"flatmateRequestId\": \"0fa1eaa0-1a3a-4f1a-9c4b-2ab6b2a2b111\",\n  \"message\": \"Interested to connect\",\n  \"status\": \"pending\",\n  \"createdAt\": \"2026-01-01T10:00:00.000Z\",\n  \"updatedAt\": \"2026-01-01T10:00:00.000Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "My join interests",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/flatmate-requests/join-interests/mine?page=1&limit=20"
+          },
+          "response": [
+            {
+              "name": "200 Join interests list",
+              "originalRequest": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/flatmate-requests/join-interests/mine?page=1&limit=20" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"items\": [\n    {\n      \"id\": \"a7a2b4c9-9d7f-4d0c-9a9a-1f1e1e1e1e1e\",\n      \"requesterId\": \"0d8b86d0-9b85-4d24-9d3a-5a3b22a8a1e1\",\n      \"flatmateRequestId\": \"0fa1eaa0-1a3a-4f1a-9c4b-2ab6b2a2b111\",\n      \"message\": \"Interested to connect\",\n      \"status\": \"pending\"\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20,\n  \"total\": 1\n}"
+            }
+          ]
+        },
+        {
+          "name": "Accept join interest (owner of request)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/flatmate-requests/join-interests/{{joinInterestId}}/accept"
+          },
+          "response": [
+            {
+              "name": "200 Accepted",
+              "originalRequest": { "method": "PATCH", "url": { "raw": "{{baseUrl}}/api/flatmate-requests/join-interests/{{joinInterestId}}/accept" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"joinInterest\": {\n    \"id\": \"a7a2b4c9-9d7f-4d0c-9a9a-1f1e1e1e1e1e\",\n    \"status\": \"accepted\"\n  },\n  \"request\": {\n    \"id\": \"0fa1eaa0-1a3a-4f1a-9c4b-2ab6b2a2b111\",\n    \"isMatched\": true\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Reject join interest (owner of request)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/flatmate-requests/join-interests/{{joinInterestId}}/reject"
+          },
+          "response": [
+            {
+              "name": "200 Rejected",
+              "originalRequest": { "method": "PATCH", "url": { "raw": "{{baseUrl}}/api/flatmate-requests/join-interests/{{joinInterestId}}/reject" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": \"a7a2b4c9-9d7f-4d0c-9a9a-1f1e1e1e1e1e\",\n  \"status\": \"rejected\"\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
