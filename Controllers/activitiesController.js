@@ -3,10 +3,27 @@ const ApiError = require('../utils/ApiError');
 const ActivityService = require('../Services/activityService');
 
 exports.getActivities = asyncHandler(async (req, res) => {
-    const { page = 1, limit = 20 } = req.query;
-    const offset = (page - 1) * limit;
+    const {
+        page = 1,
+        limit = 20,
+        from,
+        to,
+        activityType,
+        actorId,
+        entityType,
+        entityId,
+    } = req.query;
 
-    const activities = await ActivityService.getActivities(limit, offset);
+    const activities = await ActivityService.getActivities({
+        page,
+        limit,
+        from,
+        to,
+        activityType,
+        actorId,
+        entityType,
+        entityId,
+    });
 
     res.json(activities);
 });

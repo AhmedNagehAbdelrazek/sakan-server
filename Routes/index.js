@@ -6,6 +6,7 @@ const propertiesRoutes = require('./propertyRoutes');
 const applicationRoutes = require('./applicationRoutes');
 const flatmateRequestRoutes = require('./flatmateRequestRoutes');
 const paymentRoutes = require('./paymentRoutes');
+const adminDashboardRoutes = require('./adminDashboardRoutes');
 
 router.use("/auth",authRoutes);
 router.use("/user",userRoutes);
@@ -14,6 +15,7 @@ router.use("/properties", propertiesRoutes);
 router.use("/applications", applicationRoutes);
 router.use("/flatmate-requests", flatmateRequestRoutes);
 router.use("/payments", paymentRoutes);
+router.use("/admin", adminDashboardRoutes);
 
 
 module.exports = router;
