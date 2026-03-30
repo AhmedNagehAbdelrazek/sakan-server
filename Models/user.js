@@ -54,11 +54,8 @@ User.init({
     allowNull: false,
     validate:{
       validatePhoneNumber(value){
-        if(!value.startsWith("01")){
-          throw new Error("phone number has to start with 01");
-        }
-        if(value.length != 11){
-          throw new Error("phone number has to be 11 number");
+        if(value.length > 14 || value.length < 10){
+          throw new Error("phone number has to be between 10 and 14 characters long");
         }
       },
     }

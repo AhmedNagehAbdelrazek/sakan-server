@@ -20,6 +20,9 @@ function createApp() {
 
   // main system route
   app.use('/api', mainRoute);
+  app.get('/', (req, res) => {
+    res.send('Hello to Sakan Server');
+  });
 
   app.use(globalErrorHandler);
 
