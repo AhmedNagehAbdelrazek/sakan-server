@@ -4,6 +4,11 @@ module.exports = {
     activitiesTypes: [
         "login",
         "logout",
+        "dashboard_viewed",
+        "application_approved",
+        "application_rejected",
+        "payment_received",
+        "payment_released",
     ],
     living_status: ["alone", "with_family"],
     gender: ["male", "female"],
