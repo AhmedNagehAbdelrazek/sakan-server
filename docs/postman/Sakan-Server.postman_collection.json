@@ -14,7 +14,8 @@
     { "key": "flatmateRequestId", "value": "", "type": "string" },
     { "key": "joinInterestId", "value": "", "type": "string" },
     { "key": "notificationId", "value": "", "type": "string" },
-    { "key": "activityId", "value": "", "type": "string" }
+    { "key": "activityId", "value": "", "type": "string" },
+    { "key": "housingRequestId", "value": "", "type": "string" }
   ],
   "auth": {
     "type": "bearer",
@@ -928,6 +929,137 @@
               ],
               "_postman_previewlanguage": "json",
               "body": "{\n  \"id\": \"b2f9a22d-fb5f-4bd5-95ea-6b7d0f2a5f09\",\n  \"status\": \"completed\",\n  \"completedAt\": \"2026-01-02T10:00:00.000Z\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Housing Need Requests",
+      "item": [
+        {
+          "name": "Create housing need request (student)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json && json.id) pm.collectionVariables.set('housingRequestId', json.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/housing-requests",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"area\": \"Nasr City\",\n  \"housingType\": \"room\",\n  \"message\": \"Need a room near university transport.\"\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "201 Housing request created",
+              "originalRequest": { "method": "POST", "url": { "raw": "{{baseUrl}}/api/housing-requests" } },
+              "status": "Created",
+              "code": 201,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": \"0f6c85a7-2bc2-4a8a-9fd6-94b2de6f2d77\",\n  \"userId\": \"0d8b86d0-9b85-4d24-9d3a-5a3b22a8a1e1\",\n  \"area\": \"Nasr City\",\n  \"areaNormalized\": \"nasr city\",\n  \"housingType\": \"room\",\n  \"message\": \"Need a room near university transport.\",\n  \"status\": \"submitted\",\n  \"reviewedAt\": null,\n  \"reviewedBy\": null,\n  \"closedAt\": null,\n  \"closedBy\": null,\n  \"createdAt\": \"2026-04-01T12:00:00.000Z\",\n  \"updatedAt\": \"2026-04-01T12:00:00.000Z\",\n  \"cooldownDays\": 7\n}"
+            },
+            {
+              "name": "409 Cooldown duplicate",
+              "originalRequest": { "method": "POST", "url": { "raw": "{{baseUrl}}/api/housing-requests" } },
+              "status": "Conflict",
+              "code": 409,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"message\": \"Duplicate request blocked by 7-day cooldown. Next allowed at 2026-04-08T12:00:00.000Z\",\n  \"nextAllowedAt\": \"2026-04-08T12:00:00.000Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Admin: List housing need requests",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/housing-requests?page=1&limit=20&includeDemandSummary=true"
+          },
+          "response": [
+            {
+              "name": "200 Housing requests list",
+              "originalRequest": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/housing-requests?page=1&limit=20&includeDemandSummary=true" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"items\": [\n    {\n      \"id\": \"0f6c85a7-2bc2-4a8a-9fd6-94b2de6f2d77\",\n      \"area\": \"Nasr City\",\n      \"housingType\": \"room\",\n      \"message\": \"Need a room near university transport.\",\n      \"status\": \"submitted\",\n      \"createdAt\": \"2026-04-01T12:00:00.000Z\",\n      \"requester\": {\n        \"fullName\": \"Sara Ali\",\n        \"email\": \"student1@example.com\",\n        \"phone\": \"01000000000\"\n      }\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20,\n  \"total\": 1,\n  \"demandSummary\": [\n    {\n      \"areaNormalized\": \"nasr city\",\n      \"count\": 1\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Admin: Mark request reviewed",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/housing-requests/{{housingRequestId}}/status",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"reviewed\"\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "200 Request reviewed",
+              "originalRequest": { "method": "PATCH", "url": { "raw": "{{baseUrl}}/api/housing-requests/{{housingRequestId}}/status" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": \"0f6c85a7-2bc2-4a8a-9fd6-94b2de6f2d77\",\n  \"status\": \"reviewed\",\n  \"reviewedAt\": \"2026-04-01T12:05:00.000Z\",\n  \"reviewedBy\": \"1b9f9db8-1c6a-4f4e-9f0a-5b5e6ed1f6e1\",\n  \"updatedAt\": \"2026-04-01T12:05:00.000Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Admin: Mark request closed",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/housing-requests/{{housingRequestId}}/status",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"closed\"\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "200 Request closed",
+              "originalRequest": { "method": "PATCH", "url": { "raw": "{{baseUrl}}/api/housing-requests/{{housingRequestId}}/status" } },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": \"0f6c85a7-2bc2-4a8a-9fd6-94b2de6f2d77\",\n  \"status\": \"closed\",\n  \"closedAt\": \"2026-04-01T12:10:00.000Z\",\n  \"closedBy\": \"1b9f9db8-1c6a-4f4e-9f0a-5b5e6ed1f6e1\",\n  \"updatedAt\": \"2026-04-01T12:10:00.000Z\"\n}"
             }
           ]
         }

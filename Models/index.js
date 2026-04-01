@@ -10,6 +10,7 @@ const Chat = require("./chat");
 const Message = require("./message");
 
 const FlatDemand = require("./flatDemand");
+const HousingNeedRequest = require("./housingNeedRequest");
 const FlatmateRequest = require("./flatmateRequest");
 const JoinInterest = require("./joinInterest");
 const Property = require("./property");
@@ -44,6 +45,9 @@ Message.belongsTo(User, { foreignKey: "receiver_id" });
 
 User.hasMany(FlatDemand, { foreignKey: "userId" });
 FlatDemand.belongsTo(User, { foreignKey: "userId" });
+
+User.hasMany(HousingNeedRequest, { foreignKey: "userId" });
+HousingNeedRequest.belongsTo(User, { foreignKey: "userId" });
 
 User.hasMany(FlatmateRequest, { foreignKey: "userId" });
 FlatmateRequest.belongsTo(User, { foreignKey: "userId" });
@@ -80,6 +84,7 @@ module.exports = {
   Chat,
   Message,
   FlatDemand,
+  HousingNeedRequest,
   FlatmateRequest,
   JoinInterest,
   Property,

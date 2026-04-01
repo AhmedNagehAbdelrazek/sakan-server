@@ -10,10 +10,12 @@ const brevo = new BrevoClient({
 });
 
 async function sendSMS( countryCode,phoneNumber, message) {
+    const fullPhoneNumber = countryCode.trim() + phoneNumber.trim();
+    console.log(fullPhoneNumber);
     try {
         const response = await brevo.transactionalSms.sendAsyncTransactionalSms({
             sender: "Sakan",
-            recipient: countryCode + phoneNumber,
+            recipient: fullPhoneNumber,
             content: message,
             type: "transactional",
             tag: "otp-verification"
