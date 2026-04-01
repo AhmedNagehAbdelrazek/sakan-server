@@ -14,7 +14,9 @@
     { "key": "flatmateRequestId", "value": "", "type": "string" },
     { "key": "joinInterestId", "value": "", "type": "string" },
     { "key": "notificationId", "value": "", "type": "string" },
-    { "key": "activityId", "value": "", "type": "string" }
+    { "key": "activityId", "value": "", "type": "string" },
+    { "key": "imagePath1", "value": "", "type": "string" },
+    { "key": "imagePath2", "value": "", "type": "string" }
   ],
   "auth": {
     "type": "bearer",
@@ -610,7 +612,7 @@
           ]
         },
         {
-          "name": "Create property (landlord)",
+          "name": "Create property (landlord, no images)",
           "event": [
             {
               "listen": "test",
@@ -633,7 +635,7 @@
             "url": "{{baseUrl}}/api/properties",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Sunny apartment\",\n  \"description\": \"2 rooms near metro\",\n  \"pricePerMonth\": 4500,\n  \"totalRooms\": 2,\n  \"availableRooms\": 2,\n  \"type\": \"apartment\",\n  \"locationLat\": 30.0444,\n  \"locationLong\": 31.2357,\n  \"address\": \"12 Tahrir St, Cairo\",\n  \"amenities\": {\n    \"wifi\": true,\n    \"ac\": true\n  }\n}"
+              "raw": "{\n  \"title\": \"Sunny apartment\",\n  \"description\": \"2 rooms near metro\",\n  \"pricePerMonth\": 4500,\n  \"totalRooms\": 2,\n  \"availableRooms\": 2,\n  \"type\": \"flat\",\n  \"locationLat\": 30.0444,\n  \"locationLong\": 31.2357,\n  \"address\": \"12 Tahrir St, Cairo\",\n  \"amenities\": {\n    \"wifi\": true,\n    \"ac\": true\n  }\n}"
             }
           },
           "response": [
@@ -646,7 +648,59 @@
                 { "key": "Content-Type", "value": "application/json" }
               ],
               "_postman_previewlanguage": "json",
-              "body": "{\n  \"id\": \"4e2b3c3c-7a1d-4d8a-b4c6-8f4e2dcd2c11\",\n  \"title\": \"Sunny apartment\",\n  \"description\": \"2 rooms near metro\",\n  \"pricePerMonth\": \"4500.00\",\n  \"totalRooms\": 2,\n  \"availableRooms\": 2,\n  \"type\": \"apartment\",\n  \"locationLat\": \"30.0444000\",\n  \"locationLong\": \"31.2357000\",\n  \"address\": \"12 Tahrir St, Cairo\",\n  \"amenities\": {\n    \"wifi\": true,\n    \"ac\": true\n  },\n  \"userId\": \"aa0c1d41-4f4a-4e52-9d49-6cf2c8e0a0aa\",\n  \"isActive\": true,\n  \"createdAt\": \"2026-01-01T10:00:00.000Z\",\n  \"updatedAt\": \"2026-01-01T10:00:00.000Z\"\n}"
+              "body": "{\n  \"id\": \"4e2b3c3c-7a1d-4d8a-b4c6-8f4e2dcd2c11\",\n  \"title\": \"Sunny apartment\",\n  \"description\": \"2 rooms near metro\",\n  \"images\": [],\n  \"pricePerMonth\": \"4500.00\",\n  \"totalRooms\": 2,\n  \"availableRooms\": 2,\n  \"type\": \"flat\",\n  \"locationLat\": \"30.0444000\",\n  \"locationLong\": \"31.2357000\",\n  \"address\": \"12 Tahrir St, Cairo\",\n  \"amenities\": {\n    \"wifi\": true,\n    \"ac\": true\n  },\n  \"userId\": \"aa0c1d41-4f4a-4e52-9d49-6cf2c8e0a0aa\",\n  \"isActive\": true,\n  \"createdAt\": \"2026-01-01T10:00:00.000Z\",\n  \"updatedAt\": \"2026-01-01T10:00:00.000Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create property (landlord, many images multipart)",
+          "description": "Optional images upload on create: use multipart/form-data and repeat key `images` for multiple files. Leave images empty to create without files.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json && json.id) pm.collectionVariables.set('propertyId', json.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/properties",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "title", "value": "Sunny apartment with gallery", "type": "text" },
+                { "key": "description", "value": "2 rooms near metro with many photos", "type": "text" },
+                { "key": "pricePerMonth", "value": "5200", "type": "text" },
+                { "key": "totalRooms", "value": "2", "type": "text" },
+                { "key": "availableRooms", "value": "2", "type": "text" },
+                { "key": "type", "value": "flat", "type": "text" },
+                { "key": "locationLat", "value": "30.0444", "type": "text" },
+                { "key": "locationLong", "value": "31.2357", "type": "text" },
+                { "key": "address", "value": "12 Tahrir St, Cairo", "type": "text" },
+                { "key": "amenities", "value": "{\"wifi\":true,\"ac\":true}", "type": "text" },
+                { "key": "images", "type": "file", "src": "{{imagePath1}}" },
+                { "key": "images", "type": "file", "src": "{{imagePath2}}" }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "201 Property created with images",
+              "originalRequest": { "method": "POST", "url": { "raw": "{{baseUrl}}/api/properties" } },
+              "status": "Created",
+              "code": 201,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"id\": \"4e2b3c3c-7a1d-4d8a-b4c6-8f4e2dcd2c12\",\n  \"title\": \"Sunny apartment with gallery\",\n  \"description\": \"2 rooms near metro with many photos\",\n  \"images\": [\n    \"http://localhost:4566/sakan-bucket/properties/1711961855000-photo1.png\",\n    \"http://localhost:4566/sakan-bucket/properties/1711961856000-photo2.png\"\n  ],\n  \"pricePerMonth\": \"5200.00\",\n  \"totalRooms\": 2,\n  \"availableRooms\": 2,\n  \"type\": \"flat\",\n  \"locationLat\": \"30.0444000\",\n  \"locationLong\": \"31.2357000\",\n  \"address\": \"12 Tahrir St, Cairo\",\n  \"amenities\": {\n    \"wifi\": true,\n    \"ac\": true\n  },\n  \"userId\": \"aa0c1d41-4f4a-4e52-9d49-6cf2c8e0a0aa\",\n  \"isActive\": true,\n  \"createdAt\": \"2026-01-01T10:00:00.000Z\",\n  \"updatedAt\": \"2026-01-01T10:00:00.000Z\"\n}"
             }
           ]
         },

@@ -60,6 +60,8 @@ On connect, the server updates the user’s `socketId` and `online` status in th
 
 - Endpoint list + request validation: **`docs/API.md`**
 - Realtime events: **`docs/SOCKETS.md`**
+- System usage + module-based developer guide + role journeys + mounted/not-mounted handler labels: **`docs/DEVELOPER_DOC.md`**
+- Postman collection: **`docs/postman/Sakan-Server.postman_collection.json`**
 
 ## Error responses
 

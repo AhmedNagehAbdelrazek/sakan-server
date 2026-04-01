@@ -25,6 +25,20 @@ function sanitizeAmenities(amenities) {
   return amenities;
 }
 
+function sanitizeImages(images) {
+  if (images == null) return [];
+  if (!Array.isArray(images)) {
+    throw new ApiError('images must be an array of image URLs', 400);
+  }
+
+  return images.map((image, index) => {
+    if (typeof image !== 'string' || !image.trim()) {
+      throw new ApiError(`images[${index}] must be a non-empty string URL`, 400);
+    }
+    return image.trim();
+  });
+}
+
 function maskForNonOwner(propertyInstance) {
   const data = propertyInstance.toJSON();
   data.address = null;
@@ -49,6 +63,7 @@ class PropertyService {
       locationLong,
       address,
       amenities,
+      images,
     } = payload;
 
     if (!propertyTypes.includes(type)) throw new ApiError('Invalid property type', 400);
@@ -79,6 +94,7 @@ class PropertyService {
       locationLong: lng,
       address: typeof address === 'string' ? address : null,
       amenities: sanitizeAmenities(amenities),
+      images: sanitizeImages(images),
       userId: landlordId,
       isActive: true,
     });

@@ -2,6 +2,17 @@
 const { body, query, validationResult } = require('express-validator');
 const { propertyTypes } = require('../../config/constants');
 
+const parseMaybeJsonObject = (value) => {
+  if (typeof value !== 'string') return value;
+  try {
+    return JSON.parse(value);
+  } catch (error) {
+    return value;
+  }
+};
+
+const isPlainObject = (value) => value && typeof value === 'object' && !Array.isArray(value);
+
 /** 
  * body example
  * body{
@@ -32,7 +43,11 @@ const createPropertyValidator = [
   body('locationLat').isFloat({ min: -90, max: 90 }),
   body('locationLong').isFloat({ min: -180, max: 180 }),
   body('address').optional({ nullable: true }).isString(),
-  body('amenities').optional().isObject(),
+  body('amenities')
+    .optional()
+    .customSanitizer(parseMaybeJsonObject)
+    .custom((value) => isPlainObject(value))
+    .withMessage('amenities must be an object or valid JSON object string'),
 ];
 
 const updatePropertyValidator = [
@@ -45,7 +60,11 @@ const updatePropertyValidator = [
   body('locationLat').optional().isFloat({ min: -90, max: 90 }),
   body('locationLong').optional().isFloat({ min: -180, max: 180 }),
   body('address').optional({ nullable: true }).isString(),
-  body('amenities').optional().isObject(),
+  body('amenities')
+    .optional()
+    .customSanitizer(parseMaybeJsonObject)
+    .custom((value) => isPlainObject(value))
+    .withMessage('amenities must be an object or valid JSON object string'),
   body('isActive').optional().isBoolean(),
 ];
 

@@ -1,10 +1,16 @@
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
+
+const uploadsDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/'); 
+    cb(null, uploadsDir);
   },
   filename: (req, file, cb) => {
     cb(null, `${Date.now()}-${file.originalname}`); 
@@ -20,26 +26,27 @@ const fileFilter = (req, file, cb) => {
   console.log('File MIME type:', file.mimetype);
   console.log('File extension:', path.extname(file.originalname).toLowerCase());
 
-  const allowedFileTypes = /jpeg|jpg|png|mp4|avi|mov|mkv|pdf|doc|docx/;
-  const allowedTimeTypes = [
+  // const allowedFileTypes = /jpeg|jpg|png|mp4|avi|mov|mkv|pdf|doc|docx/;
+  const allowedFileTypes = /jpeg|jpg|png/;
+  const allowedMimeTypes = [
     'image/jpeg', // jpeg
     'image/png', // png
-    'video/mp4', // mp4
-    'video/avi', // avi
-    'video/x-msvideo', // avi
-    'video/quicktime', // mov
-    'video/x-matroska', // mkv
-    'application/pdf', // pdf
-    'application/msword', // doc
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // docx
+    // 'video/mp4', // mp4
+    // 'video/avi', // avi
+    // 'video/x-msvideo', // avi
+    // 'video/quicktime', // mov
+    // 'video/x-matroska', // mkv
+    // 'application/pdf', // pdf
+    // 'application/msword', // doc
+    // 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // docx
   ];
   const extname = allowedFileTypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = allowedTimeTypes.includes(file.mimetype);
+  const mimetype = allowedMimeTypes.includes(file.mimetype);
 
   if (extname && mimetype) {
     return cb(null, true);
   } else {
-    cb(new Error('Invalid file type. Only images, videos, and documents are allowed.'));
+    cb(new Error('Invalid file type. Only JPEG/JPG/PNG images are allowed.'));
   }
 };
 

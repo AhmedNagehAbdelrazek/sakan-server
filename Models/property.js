@@ -18,6 +18,11 @@ Property.init({
     type: DataTypes.TEXT,
     allowNull: false,
   },
+  images:{
+    type: DataTypes.ARRAY(DataTypes.STRING),
+    allowNull: false,
+    defaultValue: [],
+  },
   pricePerMonth: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
