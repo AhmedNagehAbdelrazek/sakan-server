@@ -1,6 +1,6 @@
 const { Model, DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const { propertyTypes } = require('../config/constants');
+const { propertyTypes, propertyStates } = require('../config/constants');
 
 class Property extends Model {}
 
@@ -74,6 +74,11 @@ Property.init({
     allowNull: false,
     defaultValue: true,
     field: 'is_active',
+  },
+  state: {
+    type: DataTypes.ENUM(...propertyStates),
+    allowNull: false,
+    defaultValue: 'sent',
   },
 }, {
   sequelize,

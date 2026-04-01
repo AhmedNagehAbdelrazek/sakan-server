@@ -38,7 +38,7 @@ describe('US1: student browsing properties', () => {
       verified: true,
     });
 
-    await PropertyService.createForLandlord(landlord.id, {
+    const created = await PropertyService.createForLandlord(landlord.id, {
       title: 'Nice flat',
       description: 'Close to campus',
       pricePerMonth: 1000,
@@ -50,6 +50,8 @@ describe('US1: student browsing properties', () => {
       address: 'SECRET ADDRESS',
       amenities: {},
     });
+
+    await created.update({ state: 'approved' });
   });
 
   afterAll(async () => {

@@ -32,6 +32,13 @@ async function sendStorageBody(res, body) {
   throw new ApiError('Unsupported image stream returned by storage provider.', 500);
 }
 
+function sendLifecycleResponse(res, property, message) {
+  return res.json({
+    message,
+    property,
+  });
+}
+
 exports.createProperty = asyncHandler(async (req, res) => {
   const payload = { ...req.body };
 
@@ -66,7 +73,7 @@ exports.listProperties = asyncHandler(async (req, res) => {
     ? await PropertyService.listForStudent(req.user, paging)
     : await PropertyService.listForUser(req.user, {
         ...paging,
-        isActive: typeof isActive === 'undefined' ? true : isActive === 'true',
+        isActive: typeof isActive === 'undefined' ? undefined : isActive === 'true',
       });
   res.json(result);
 });
@@ -82,8 +89,28 @@ exports.updateProperty = asyncHandler(async (req, res) => {
 });
 
 exports.deleteProperty = asyncHandler(async (req, res) => {
-  const out = await PropertyService.softDelete(req.user, req.params.id);
+  const out = await PropertyService.deleteWithRoleSemantics(req.user, req.params.id);
   res.json(out);
+});
+
+exports.submitProperty = asyncHandler(async (req, res) => {
+  const updated = await PropertyService.submitDrafted(req.user, req.params.id);
+  sendLifecycleResponse(res, updated, 'Property submitted for review successfully');
+});
+
+exports.approveProperty = asyncHandler(async (req, res) => {
+  const updated = await PropertyService.approveSent(req.user, req.params.id);
+  sendLifecycleResponse(res, updated, 'Property approved successfully');
+});
+
+exports.declineProperty = asyncHandler(async (req, res) => {
+  const updated = await PropertyService.declineSent(req.user, req.params.id);
+  sendLifecycleResponse(res, updated, 'Property declined successfully');
+});
+
+exports.reopenProperty = asyncHandler(async (req, res) => {
+  const updated = await PropertyService.reopenDeclined(req.user, req.params.id);
+  sendLifecycleResponse(res, updated, 'Property reopened and sent for review successfully');
 });
 
 exports.nearbyCount = asyncHandler(async (req, res) => {

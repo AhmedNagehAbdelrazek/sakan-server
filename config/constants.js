@@ -13,6 +13,13 @@ module.exports = {
     living_status: ["alone", "with_family"],
     gender: ["male", "female"],
     propertyTypes: ["flat", "room"],
+    propertyStates: ["drafted", "sent", "approved", "declined"],
+    propertyStateTransitions: {
+        submitDrafted: { from: "drafted", to: "sent" },
+        approveSent: { from: "sent", to: "approved" },
+        declineSent: { from: "sent", to: "declined" },
+        reopenDeclined: { from: "declined", to: "sent" },
+    },
     applicationStatus: ['pending', 'approved', 'paid','checked_in', 'rejected', 'completed'],
     paymentStatus: ['pending', 'received', 'released', 'refunded'],
     paymentMethods: ['card', 'wallet', 'cash', 'transfer'],

@@ -1,6 +1,6 @@
 // /utils/validators/propertyValidator.js
-const { body, query, validationResult } = require('express-validator');
-const { propertyTypes } = require('../../config/constants');
+const { body, query, param, validationResult } = require('express-validator');
+const { propertyTypes, propertyStates } = require('../../config/constants');
 
 const parseMaybeJsonObject = (value) => {
   if (typeof value !== 'string') return value;
@@ -12,6 +12,29 @@ const parseMaybeJsonObject = (value) => {
 };
 
 const isPlainObject = (value) => value && typeof value === 'object' && !Array.isArray(value);
+
+const allowedTransitions = {
+  drafted: ['sent'],
+  sent: ['approved', 'declined'],
+  approved: ['sent'],
+  declined: ['sent'],
+};
+
+const isValidPropertyState = (state) => propertyStates.includes(state);
+
+const canTransitionPropertyState = (fromState, toState) => {
+  if (!isValidPropertyState(fromState) || !isValidPropertyState(toState)) {
+    return false;
+  }
+  return (allowedTransitions[fromState] || []).includes(toState);
+};
+
+const denyStatePayload = body('state')
+  .not()
+  .exists()
+  .withMessage('state is managed by workflow and cannot be set directly');
+
+const propertyIdParamValidator = param('id').isUUID().withMessage('invalid property id');
 
 /** 
  * body example
@@ -34,6 +57,7 @@ const isPlainObject = (value) => value && typeof value === 'object' && !Array.is
  * }
  */ 
 const createPropertyValidator = [
+  denyStatePayload,
   body('title').isString().trim().notEmpty(),
   body('description').isString().trim().notEmpty(),
   body('pricePerMonth').isFloat({ gt: 0 }),
@@ -51,6 +75,7 @@ const createPropertyValidator = [
 ];
 
 const updatePropertyValidator = [
+  denyStatePayload,
   body('title').optional().isString().trim().notEmpty(),
   body('description').optional().isString().trim().notEmpty(),
   body('pricePerMonth').optional().isFloat({ gt: 0 }),
@@ -66,6 +91,27 @@ const updatePropertyValidator = [
     .custom((value) => isPlainObject(value))
     .withMessage('amenities must be an object or valid JSON object string'),
   body('isActive').optional().isBoolean(),
+];
+
+const submitPropertyValidator = [
+  propertyIdParamValidator,
+];
+
+const approvePropertyValidator = [
+  propertyIdParamValidator,
+];
+
+const declinePropertyValidator = [
+  propertyIdParamValidator,
+  body('reason').optional().isString().trim().isLength({ max: 500 }),
+];
+
+const reopenPropertyValidator = [
+  propertyIdParamValidator,
+];
+
+const propertyIdOnlyValidator = [
+  propertyIdParamValidator,
 ];
 
 const nearbyValidator = [
@@ -84,5 +130,12 @@ module.exports = {
   createPropertyValidator,
   updatePropertyValidator,
   nearbyValidator,
+  submitPropertyValidator,
+  approvePropertyValidator,
+  declinePropertyValidator,
+  reopenPropertyValidator,
+  propertyIdOnlyValidator,
+  isValidPropertyState,
+  canTransitionPropertyState,
   handleValidation,
 };
