@@ -73,16 +73,5 @@ module.exports = {
         },
       },
     }),
-  },
-  aws: {
-    useAWS: true,
-    getConfig: initAWSDBConfig,
-    logging: false,
-    define: {
-      createdAt: "createdat",
-      updatedAt: "updatedat"
-    },
-    dialect: 'postgres',
-    ...(sslDialectOptions ? { dialectOptions: sslDialectOptions } : {}),
   }
 };
