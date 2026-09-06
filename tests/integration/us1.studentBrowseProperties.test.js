@@ -48,6 +48,7 @@ describe('US1: student browsing properties', () => {
       locationLat: 30.0444,
       locationLong: 31.2357,
       address: 'SECRET ADDRESS',
+      city: 'Cairo',
       amenities: {},
     });
 

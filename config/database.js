@@ -127,17 +127,59 @@ async function validateDatabase() {
  */
 function isConnectionResetError(err) {
   const code = err?.original?.code || err?.parent?.code || err?.code;
-  return code === 'ECONNRESET' || code === 'ETIMEDOUT' || err?.name === 'SequelizeConnectionError';
+  const msg = String(err?.message || err?.original?.message || '');
+  return (
+    code === 'ECONNRESET' ||
+    code === 'ETIMEDOUT' ||
+    code === 'ENOTFOUND' ||
+    code === 'EAI_AGAIN' ||
+    code === 'ECONNREFUSED' ||
+    err?.name === 'SequelizeConnectionError' ||
+    err?.name === 'SequelizeConnectionTimedOutError' ||
+    err?.name === 'SequelizeConnectionRefusedError' ||
+    /ECONNRESET|ETIMEDOUT|Connection terminated|terminating connection|too many clients|was called after the connection manager was closed/i.test(msg)
+  );
+}
+
+// Drop dead sockets without permanently closing the manager.
+// NOTE: never call connectionManager.close() here — it permanently replaces
+// getConnection with a throwing stub and forces an instance recreate.
+async function purgeDeadPoolConnections(inst) {
+  try {
+    const pool = inst?.connectionManager?.pool;
+    if (pool && typeof pool.destroyAllNow === 'function') {
+      await pool.destroyAllNow();
+    }
+  } catch (_) {
+    // best-effort only; retry below will get a fresh socket
+  }
+}
+
+function missingConnectionEnv() {
+  return ['host', 'database', 'username'].filter((k) => !dbConfig[k]);
 }
 
 async function initDatabase({ sync = true, syncOptions = { alter: true, force: false } } = {}) {
     // await validateDatabase();
 
+    const missing = missingConnectionEnv();
+    if (missing.length) {
+      const err = new Error(
+        `Database configuration incomplete (missing: ${missing.join(', ')}). ` +
+        'On Vercel set DATABASE_URL (recommended, from Neon) or ' +
+        'DB_HOST/DB_PORT/DB_NAME/DB_USERNAME/DB_PASSWORD. ' +
+        `Current host=${dbConfig.host || '(missing)'} db=${dbConfig.database || '(missing)'}.`
+      );
+      err.name = 'SequelizeConnectionError';
+      err.code = 'ENOTFOUND';
+      throw err;
+    }
+
     // On Vercel, even sync:false needs to ensure connection is alive.
     // Neon closes idle connections => ECONNRESET on next query if we skip authenticate.
     // Also: Neon's compute may be suspended (scale-to-zero); waking it can add 1-2s,
     // so use exponential backoff rather than a fixed tiny delay.
-    const maxRetries = isServerlessEnv() ? 4 : 1;
+    const maxRetries = isServerlessEnv() ? 5 : 1;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       // If previous code (pre-fix) called connectionManager.close(), the manager is permanently closed.
@@ -173,11 +215,12 @@ async function initDatabase({ sync = true, syncOptions = { alter: true, force: f
         console.error(`Database init attempt ${attempt}/${maxRetries} failed:`, err.message);
 
         if (shouldRetry) {
+          // Purge dead sockets (safe) so the retry acquires a fresh connection.
           // Do NOT call connectionManager.close() - it permanently closes the manager
           // and causes "getConnection was called after the connection manager was closed".
-          // Pool eviction + keepAlive will discard the dead socket, retry will get a fresh one.
-          // Exponential backoff (200ms, 400ms, 800ms...) leaves room for Neon cold starts.
-          const backoff = 200 * Math.pow(2, attempt - 1);
+          // Exponential backoff (300ms, 600ms, 1200ms...) leaves room for Neon cold starts.
+          await purgeDeadPoolConnections(sequelize);
+          const backoff = 300 * Math.pow(2, attempt - 1);
           await new Promise((r) => setTimeout(r, backoff));
           continue;
         }
@@ -196,3 +239,5 @@ module.exports.getSequelize = getSequelize;
 module.exports.recreateSequelize = recreateSequelize;
 module.exports.restoreSequelizePool = recreateSequelize;
 module.exports.isConnectionManagerClosed = isConnectionManagerClosed;
+module.exports.isConnectionResetError = isConnectionResetError;
+module.exports.purgeDeadPoolConnections = purgeDeadPoolConnections;
