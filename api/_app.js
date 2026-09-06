@@ -61,8 +61,7 @@ function createDatabaseBootstrapMiddleware() {
         } catch (retryError) {
           globalThis[GLOBAL_KEY] = undefined;
           return next(retryError);
-        }
-      }
+        }      }
 
       globalThis[GLOBAL_KEY] = undefined;
       return next(error);

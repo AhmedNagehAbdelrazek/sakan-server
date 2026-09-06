@@ -45,11 +45,17 @@ const pool = isServerless
   : { max: 5, min: 0, acquire: 30000, idle: 10000, evict: 10000 };
 
 // pg driver options - keepAlive prevents ECONNRESET on Vercel/Neon
+//
+// NOTE: Do NOT send unsupported GUC/startup parameters (e.g.
+// `idle_in_transaction_session_timeout`) when using Neon's pooled
+// `*-pooler` endpoint. Neon's PgBouncer only tracks
+// client_encoding/datestyle/timezone/standard_conforming_strings and
+// rejects (resets) the connection for any other startup parameter,
+// surfacing as `read ECONNRESET` at connect time.
 const baseDialectOptions = {
   keepAlive: true,
   keepAliveInitialDelayMillis: 10000,
   connectionTimeoutMillis: 10000,
-  idle_in_transaction_session_timeout: 10000,
   ...(sslDialectOptions || {}),
 };
 

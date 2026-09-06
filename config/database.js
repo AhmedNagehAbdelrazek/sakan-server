@@ -135,7 +135,9 @@ async function initDatabase({ sync = true, syncOptions = { alter: true, force: f
 
     // On Vercel, even sync:false needs to ensure connection is alive.
     // Neon closes idle connections => ECONNRESET on next query if we skip authenticate.
-    const maxRetries = isServerlessEnv() ? 3 : 1;
+    // Also: Neon's compute may be suspended (scale-to-zero); waking it can add 1-2s,
+    // so use exponential backoff rather than a fixed tiny delay.
+    const maxRetries = isServerlessEnv() ? 4 : 1;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       // If previous code (pre-fix) called connectionManager.close(), the manager is permanently closed.
@@ -174,7 +176,9 @@ async function initDatabase({ sync = true, syncOptions = { alter: true, force: f
           // Do NOT call connectionManager.close() - it permanently closes the manager
           // and causes "getConnection was called after the connection manager was closed".
           // Pool eviction + keepAlive will discard the dead socket, retry will get a fresh one.
-          await new Promise((r) => setTimeout(r, 200 * attempt));
+          // Exponential backoff (200ms, 400ms, 800ms...) leaves room for Neon cold starts.
+          const backoff = 200 * Math.pow(2, attempt - 1);
+          await new Promise((r) => setTimeout(r, backoff));
           continue;
         }
 
