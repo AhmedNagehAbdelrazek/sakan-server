@@ -1,21 +1,51 @@
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 
-const uploadsDir = path.join(process.cwd(), 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+// Vercel's filesystem is read-only except /tmp. Doing mkdirSync at import
+// time on /var/task/uploads crashes the entire deployment.
+// Use memory storage on Vercel (serverless) and disk storage locally.
+const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+
+let storage;
+if (isServerless) {
+  storage = multer.memoryStorage();
+} else {
+  const uploadsDir = path.join(process.cwd(), 'uploads');
+  // Defer creation and never crash the process if mkdir fails.
+  // Creation also happens lazily inside destination as a fallback.
+  try {
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+  } catch (_) {
+    // ignore - will try again per-request or fall back to os.tmpdir()
+  }
+
+  storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      // Lazy-ensure dir exists per-request; fallback to os.tmpdir() if not writable
+      try {
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        cb(null, uploadsDir);
+      } catch (err) {
+        const tmpDir = path.join(os.tmpdir(), 'uploads');
+        try {
+          if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
+          cb(null, tmpDir);
+        } catch (e) {
+          cb(e);
+        }
+      }
+    },
+    filename: (req, file, cb) => {
+      cb(null, `${Date.now()}-${file.originalname}`);
+    },
+  });
 }
-
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadsDir);
-  },
-  filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`); 
-  },
-});
 
 // File size limit (e.g., 50 MB)
 const fileSizeLimit = 50 * 1024 * 1024; // 50 MB in bytes

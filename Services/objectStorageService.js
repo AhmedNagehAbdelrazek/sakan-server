@@ -91,7 +91,10 @@ class ObjectStorageService {
       throw new ApiError('Image file is required. Use form-data field name "image".', 400);
     }
 
-    if (!file.path) {
+    // Support both diskStorage (file.path) and memoryStorage (file.buffer) for Vercel
+    const hasPath = Boolean(file.path);
+    const hasBuffer = Boolean(file.buffer);
+    if (!hasPath && !hasBuffer) {
       throw new ApiError('Uploaded image path is missing.', 400);
     }
 
@@ -99,10 +102,14 @@ class ObjectStorageService {
     const key = `${folder}/${Date.now()}-${sanitizeFileName(file.originalname)}`;
 
     let body;
-    try {
-      body = await fs.readFile(file.path);
-    } catch (error) {
-      throw new ApiError('Failed to read uploaded image from disk.', 500);
+    if (hasBuffer) {
+      body = file.buffer;
+    } else {
+      try {
+        body = await fs.readFile(file.path);
+      } catch (error) {
+        throw new ApiError('Failed to read uploaded image from disk.', 500);
+      }
     }
 
     try {
@@ -125,7 +132,9 @@ class ObjectStorageService {
     } catch (error) {
       throw new ApiError(`Failed to upload image to bucket: ${error.message}`, 500);
     } finally {
-      await fs.unlink(file.path).catch(() => {});
+      if (hasPath && file.path) {
+        await fs.unlink(file.path).catch(() => {});
+      }
     }
   }
 
