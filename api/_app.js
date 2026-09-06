@@ -1,11 +1,21 @@
 require('pg');
 require('pg-hstore');
 const { createApp } = require('../app');
-const sequelize = require('../config/database');
 
 function isConnectionResetError(err) {
   const code = err?.original?.code || err?.parent?.code || err?.code;
-  return code === 'ECONNRESET' || code === 'ETIMEDOUT' || err?.name === 'SequelizeConnectionError';
+  const msg = String(err?.message || '');
+  return code === 'ECONNRESET' || code === 'ETIMEDOUT' || err?.name === 'SequelizeConnectionError'
+    || msg.includes('was called after the connection manager was closed');
+}
+
+function getLiveSequelize() {
+  // Always fetch fresh from global / require to handle recreation after close()
+  let db = globalThis.__sakan_sequelize;
+  if (db) return db;
+  // Clear cache to get updated module.exports if it was recreated
+  try { delete require.cache[require.resolve('../config/database')]; } catch (_) {}
+  return require('../config/database');
 }
 
 function createDatabaseBootstrapMiddleware() {
@@ -15,7 +25,15 @@ function createDatabaseBootstrapMiddleware() {
   return async (req, res, next) => {
     const getInitPromise = () => {
       if (!globalThis[GLOBAL_KEY]) {
-        globalThis[GLOBAL_KEY] = sequelize.initDatabase({ sync: false });
+        const db = getLiveSequelize();
+        // If manager was closed by previous buggy code, recreate before init
+        if (db.isConnectionManagerClosed && db.isConnectionManagerClosed(db) && db.recreateSequelize) {
+          db.recreateSequelize();
+          const fresh = getLiveSequelize();
+          globalThis[GLOBAL_KEY] = fresh.initDatabase({ sync: false });
+        } else {
+          globalThis[GLOBAL_KEY] = db.initDatabase({ sync: false });
+        }
       }
       return globalThis[GLOBAL_KEY];
     };
@@ -24,14 +42,20 @@ function createDatabaseBootstrapMiddleware() {
       await getInitPromise();
       return next();
     } catch (error) {
-      // If it's a connection reset, Neon closed idle connection - retry once
+      // If it's a connection reset or closed manager, retry once without ever calling close()
       if (isConnectionResetError(error)) {
         globalThis[GLOBAL_KEY] = undefined;
+        // If closed, ensure fresh instance
+        const msg = String(error?.message || '');
+        if (msg.includes('was called after the connection manager was closed')) {
+          try {
+            const db = getLiveSequelize();
+            if (db.recreateSequelize) db.recreateSequelize();
+          } catch (_) {}
+        }
         try {
-          await sequelize.connectionManager.close().catch(() => {});
-        } catch (_) {}
-        try {
-          globalThis[GLOBAL_KEY] = sequelize.initDatabase({ sync: false });
+          const db = getLiveSequelize();
+          globalThis[GLOBAL_KEY] = db.initDatabase({ sync: false });
           await globalThis[GLOBAL_KEY];
           return next();
         } catch (retryError) {

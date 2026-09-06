@@ -24,7 +24,56 @@ function getSequelize() {
   return instance;
 }
 
-const sequelize = getSequelize();
+let sequelize = getSequelize();
+module.exports.getSequelize = getSequelize;
+
+function isConnectionManagerClosed(inst) {
+  try {
+    return inst.connectionManager.getConnection.toString().includes('was called after the connection manager was closed')
+      || !inst.connectionManager.pool;
+  } catch (_) {
+    return false;
+  }
+}
+
+function recreateSequelize() {
+  // Prefer in-place pool restore to keep Models bound to same sequelize instance.
+  // Creating a new Sequelize would orphan already-imported Models.
+  if (isConnectionManagerClosed(sequelize)) {
+    try {
+      console.warn('Attempting in-place ConnectionManager pool restore');
+      // close() overwrote getConnection as instance property - delete to restore prototype method
+      if (sequelize.connectionManager.hasOwnProperty('getConnection')) {
+        delete sequelize.connectionManager.getConnection;
+      }
+      // Re-init pools on same instance (keeps models intact)
+      if (typeof sequelize.connectionManager.initPools === 'function') {
+        sequelize.connectionManager.initPools();
+      }
+      // Verify restore succeeded
+      if (!isConnectionManagerClosed(sequelize)) {
+        console.warn('In-place pool restore succeeded');
+        return sequelize;
+      }
+    } catch (e) {
+      console.error('In-place pool restore failed, falling back to new instance:', e.message);
+    }
+  }
+
+  // Fallback: create fresh instance (models will need re-init, but better than hard crash)
+  const globalKey = "__sakan_sequelize";
+  try { delete globalThis[globalKey]; } catch (_) {}
+  const fresh = new Sequelize(dbConfig);
+  globalThis[globalKey] = fresh;
+  sequelize = fresh;
+  module.exports = sequelize;
+  module.exports.initDatabase = initDatabase;
+  module.exports.getSequelize = getSequelize;
+  module.exports.recreateSequelize = recreateSequelize;
+  module.exports.restoreSequelizePool = recreateSequelize;
+  module.exports.isConnectionManagerClosed = isConnectionManagerClosed;
+  return fresh;
+}
 
 
 async function validateDatabase() {
@@ -89,6 +138,13 @@ async function initDatabase({ sync = true, syncOptions = { alter: true, force: f
     const maxRetries = isServerlessEnv() ? 3 : 1;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      // If previous code (pre-fix) called connectionManager.close(), the manager is permanently closed.
+      // Detect and recreate fresh instance before trying.
+      if (isConnectionManagerClosed(sequelize)) {
+        console.warn('ConnectionManager was closed, recreating Sequelize instance');
+        recreateSequelize();
+      }
+
       try {
         if (!sync) {
           await sequelize.authenticate();
@@ -99,17 +155,25 @@ async function initDatabase({ sync = true, syncOptions = { alter: true, force: f
         console.log("Database synchronized");
         return sequelize;
       } catch (err) {
+        const isClosedError = String(err?.message || '').includes('was called after the connection manager was closed');
+        if (isClosedError) {
+          console.warn('Detected closed ConnectionManager, recreating...');
+          recreateSequelize();
+          if (attempt < maxRetries) {
+            await new Promise((r) => setTimeout(r, 200 * attempt));
+            continue;
+          }
+        }
+
         const isLastAttempt = attempt === maxRetries;
         const shouldRetry = isConnectionResetError(err) && !isLastAttempt;
 
         console.error(`Database init attempt ${attempt}/${maxRetries} failed:`, err.message);
 
         if (shouldRetry) {
-          // Force pool to drop dead connections before retry
-          try {
-            await sequelize.connectionManager.close();
-          } catch (_) {}
-          // small backoff
+          // Do NOT call connectionManager.close() - it permanently closes the manager
+          // and causes "getConnection was called after the connection manager was closed".
+          // Pool eviction + keepAlive will discard the dead socket, retry will get a fresh one.
           await new Promise((r) => setTimeout(r, 200 * attempt));
           continue;
         }
@@ -124,3 +188,7 @@ async function initDatabase({ sync = true, syncOptions = { alter: true, force: f
 
 module.exports = sequelize;
 module.exports.initDatabase = initDatabase;
+module.exports.getSequelize = getSequelize;
+module.exports.recreateSequelize = recreateSequelize;
+module.exports.restoreSequelizePool = recreateSequelize;
+module.exports.isConnectionManagerClosed = isConnectionManagerClosed;
