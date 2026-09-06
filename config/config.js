@@ -94,7 +94,7 @@ const sslDialectOptions = sslOptions
 const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 
 const pool = isServerless
-  ? { max: 1, min: 0, acquire: 15000, idle: 5000, evict: 2000, maxUses: 50 }
+  ? { max: 1, min: 0, acquire: 30000, idle: 5000, evict: 2000, maxUses: 50 }
   : { max: 5, min: 0, acquire: 30000, idle: 10000, evict: 5000 };
 
 // pg driver options - keepAlive prevents ECONNRESET on Vercel/Neon
@@ -108,7 +108,9 @@ const pool = isServerless
 const baseDialectOptions = {
   keepAlive: true,
   keepAliveInitialDelayMillis: 10000,
-  connectionTimeoutMillis: 10000,
+  // Neon scale-to-zero wakes can take well over 10s; a short connect timeout
+  // turns a slow wake into `SequelizeConnectionError: timeout expired`.
+  connectionTimeoutMillis: 30000,
   ...(sslDialectOptions || {}),
 };
 
@@ -132,6 +134,7 @@ const baseSequelizeOptions = {
       /ETIMEDOUT/,
       /ENOTFOUND/,
       /EAI_AGAIN/,
+      /timeout expired/,
       /Connection terminated/,
       /terminating connection/,
       /too many clients/,
@@ -149,6 +152,7 @@ const productionSequelizeOptions = {
       /ETIMEDOUT/,
       /ENOTFOUND/,
       /EAI_AGAIN/,
+      /timeout expired/,
       /Connection terminated/,
       /terminating connection/,
       /too many clients/,
