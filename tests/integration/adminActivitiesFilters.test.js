@@ -91,14 +91,14 @@ describe('Admin activities filters', () => {
 
     const [item] = res.body;
     expect(item.activityType).toBe('payment_received');
-    expect(item.userId).toBe(adminB.id);
+    expect(item.user.id).toBe(adminB.id);
     expect(item.activityDetails).toEqual(
       expect.objectContaining({
         entityType: 'payment',
         entityId: 'pay-123',
       })
     );
-    expect(item.User).toEqual(
+    expect(item.user).toEqual(
       expect.objectContaining({
         email: 'admin_filter_b@example.com',
         role: 'admin',

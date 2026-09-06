@@ -16,7 +16,7 @@ describe('Model associations', () => {
     expect(Application.associations.Payments).toBeDefined();
     expect(Application.associations.Payments.associationType).toBe('HasMany');
 
-    expect(Payment.associations.Application).toBeDefined();
-    expect(Payment.associations.Application.associationType).toBe('BelongsTo');
+    expect(Payment.associations.application).toBeDefined();
+    expect(Payment.associations.application.associationType).toBe('BelongsTo');
   });
 });

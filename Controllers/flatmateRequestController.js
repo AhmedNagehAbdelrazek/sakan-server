@@ -45,3 +45,13 @@ exports.createJoinInterest = asyncHandler(async (req, res) => {
   const ji = await FlatmateRequestService.createJoinInterest(req.user, req.params.id, { message: req.body.message });
   res.status(201).json(ji);
 });
+
+exports.listAll = asyncHandler(async (req, res) => {
+  const result = await FlatmateRequestService.listAll(req.query);
+  res.json(result);
+});
+
+exports.getById = asyncHandler(async (req, res) => {
+  const record = await FlatmateRequestService.getById(req.params.id);
+  res.json(record);
+});

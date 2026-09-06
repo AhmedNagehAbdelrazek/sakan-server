@@ -34,6 +34,7 @@ describe('US1: landlord create property defaults to sent', () => {
         totalRooms: 2,
         availableRooms: 1,
         type: 'flat',
+        city: 'Cairo',
         locationLat: 30.1,
         locationLong: 31.2,
         address: 'SECRET',

@@ -69,8 +69,8 @@ exports.listProperties = asyncHandler(async (req, res) => {
     limit: limit ? Number(limit) : 20,
   };
 
-  const result = req.user.role === 'student'
-    ? await PropertyService.listForStudent(req.user, paging)
+  const result = (req.user.role === 'student' || req.user.role === 'landlord')
+    ? await PropertyService.listForRegularUser(req.user, paging)
     : await PropertyService.listForUser(req.user, {
         ...paging,
         isActive: typeof isActive === 'undefined' ? undefined : isActive === 'true',
@@ -99,26 +99,33 @@ exports.submitProperty = asyncHandler(async (req, res) => {
 });
 
 exports.approveProperty = asyncHandler(async (req, res) => {
-  const updated = await PropertyService.approveSent(req.user, req.params.id);
+  const updated = await PropertyService.approveSent(req.params.id);
   sendLifecycleResponse(res, updated, 'Property approved successfully');
 });
 
 exports.declineProperty = asyncHandler(async (req, res) => {
-  const updated = await PropertyService.declineSent(req.user, req.params.id);
+  const updated = await PropertyService.declineSent(req.params.id);
   sendLifecycleResponse(res, updated, 'Property declined successfully');
 });
 
 exports.reopenProperty = asyncHandler(async (req, res) => {
-  const updated = await PropertyService.reopenDeclined(req.user, req.params.id);
+  const updated = await PropertyService.reopenDeclined(req.params.id);
   sendLifecycleResponse(res, updated, 'Property reopened and sent for review successfully');
+});
+
+exports.searchProperties = asyncHandler(async (req, res) => {
+  const result = await PropertyService.search(req.user, req.query);
+  res.json(result);
 });
 
 exports.nearbyCount = asyncHandler(async (req, res) => {
   const lat = Number(req.query.lat);
   const lng = Number(req.query.long);
   const radiusKm = req.query.radiusKm ? Number(req.query.radiusKm) : 5;
+  const page = req.query.page ? Number(req.query.page) : 1;
+  const limit = req.query.limit ? Number(req.query.limit) : 20;
 
-  const result = await PropertyService.nearbyCount({ lat, lng, radiusKm });
+  const result = await PropertyService.nearbyCount({ lat, lng, radiusKm }, req.user, { page, limit });
   res.json(result);
 });
 
@@ -153,3 +160,9 @@ exports.uploadPropertyImage = asyncHandler(async (req, res) => {
     url: ObjectStorageService.buildProxyImageUrl(uploadResult.key, req),
   });
 });
+
+/*
+now i want to add new controller flow 
+in the app we need to add a new section where the user can send a request to us (admins) to say i want a flat or a room in an area and i disn't find it in the app provided ones 
+
+*/

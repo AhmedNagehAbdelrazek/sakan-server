@@ -1,0 +1,75 @@
+CHANGES SUMMARY
+================
+
+1. Forgot Password — OTP-based mobile flow
+-------------------------------------------
+
+The old flow sent a browser URL link (FRONTEND_RESET_PASSWORD_URL/?token=...).
+Now it's a 3-step OTP flow:
+
+  POST /api/auth/forgotpassword   — Sends 6-digit OTP via email + SMS
+  POST /api/auth/verifyResetOtp   — Verifies OTP → returns short-lived JWT (resetToken)
+  POST /api/auth/resetpassword    — Accepts resetToken + new password → resets + logs in
+
+2. Properties — Bug fixes + new search endpoint
+------------------------------------------------
+Bug fix: page/limit didn't work in listProperties
+
+New: GET /api/properties/search
+  Rich search/filter endpoint for the mobile app:
+    q              — text search (title + description)
+    type           — flat / room
+    minPrice/maxPrice — price range
+    minRooms/maxRooms — room count range
+    state          — admin-only state filter
+    isActive       — admin/landlord active filter
+    lat/lng/radiusKm — location (haversine)
+    page/limit     — pagination (cap 100)
+
+  Returns: { items, page, limit, total, totalPages }
+
+
+3. Property creation — location now fully optional
+------------------------------------------------------
+
+The app is not integrated with a map provider yet, so all map data is optional:
+  { locationLat, locationLong, address }  → all stored
+  { address: "12 Tahrir St" }             → coords stored as null
+  { locationLat, locationLong }            → address stored as null
+  no location at all                       → stored as null (map can be added later)
+  { locationLat } (missing lng)            → error "Both must be provided together"
+
+
+4. Nearby properties — now returns the properties too
+------------------------------------------------------
+
+GET /api/properties/nearby used to return just { count }.
+Now returns: { items, count, page, limit, totalPages }
+
+Added optional page/limit (defaults 1/20, cap 100).
+Students get masked data (address = null).
+
+
+5. New feature: Property Requests
+----------------------------------
+
+A new section where users can submit a request saying "I want a flat/room
+in an area and didn't find it in the app".
+
+Fields:
+  message       TEXT        required
+  propertyType  flat/room   required
+  requestType   looking     (wants to rent)
+                offering    (has a place to rent out)
+  address       TEXT        optional (or coords)
+  locationLat   DECIMAL     optional (or address)
+  locationLong  DECIMAL     optional (or address)
+  major         STRING      optional (for students)
+
+Endpoints:
+  POST   /api/property-requests              student, landlord
+  GET    /api/property-requests              admin (list + pagination)
+  GET    /api/property-requests/:id          admin
+  PATCH  /api/property-requests/:id/status   admin
+
+Status flow: pending → contacted → resolved / closed

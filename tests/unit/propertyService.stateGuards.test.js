@@ -28,6 +28,7 @@ describe('PropertyService transition guards', () => {
 
   test('transitionWithExpectedState updates when expected state matches', async () => {
     const property = await Property.create({
+            city: 'Cairo',
       title: 'Guard property success',
       description: 'desc',
       images: [],
@@ -55,6 +56,7 @@ describe('PropertyService transition guards', () => {
 
   test('transitionWithExpectedState throws conflict when state changed', async () => {
     const property = await Property.create({
+            city: 'Cairo',
       title: 'Guard property conflict',
       description: 'desc',
       images: [],

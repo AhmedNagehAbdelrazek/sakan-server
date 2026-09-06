@@ -108,7 +108,7 @@ describe('PropertyService visibility rules', () => {
   });
 
   test('student sees only approved and masked properties', async () => {
-    const result = await PropertyService.listForStudent(student, { page: 1, limit: 20 });
+    const result = await PropertyService.listForRegularUser(student, { page: 1, limit: 20 });
 
     expect(result.items).toHaveLength(1);
     expect(result.items[0].state).toBe('approved');
@@ -120,6 +120,14 @@ describe('PropertyService visibility rules', () => {
 
     expect(result.items.length).toBeGreaterThanOrEqual(1);
     expect(result.items.some((item) => item.state === 'drafted')).toBe(true);
+  });
+
+  test('unified listing includes own properties in any state plus marketplace', async () => {
+    const result = await PropertyService.listForRegularUser(landlordA, { page: 1, limit: 50 });
+
+    const states = new Set(result.items.map((item) => item.state));
+    expect(states.has('sent')).toBe(true);
+    expect(states.has('approved')).toBe(true);
   });
 
   test('admin can list properties across all states', async () => {

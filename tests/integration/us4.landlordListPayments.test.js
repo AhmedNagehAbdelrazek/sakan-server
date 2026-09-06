@@ -49,6 +49,7 @@ describe('US4: landlord lists payments', () => {
     });
 
     property = await Property.create({
+            city: 'Cairo',
       title: 'US4 list property',
       description: 'desc',
       pricePerMonth: 650,

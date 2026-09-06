@@ -1,4 +1,5 @@
-const { Notification, UserPreference } = require("../Models/index");
+const { Op } = require("sequelize");
+const { Notification, UserPreference, User } = require("../Models/index");
 
 async function notification(io, { event, userId, message, type, roomId }) {
     try {
@@ -26,7 +27,7 @@ async function notification(io, { event, userId, message, type, roomId }) {
                 type: newNotification.notificationType,
                 content: newNotification.notificationContent,
                 read: newNotification.read,
-                createdAt: newNotification.createdAt,
+                createdat: newNotification.createdat,
             });
         }
 
@@ -36,5 +37,48 @@ async function notification(io, { event, userId, message, type, roomId }) {
         throw error;
     }
 }
+
+// Send an announcement to every active, opted-in user.
+// Durable history rows are batched; real-time emit is optional (io may be null).
+async function broadcast(io, { title, body, type = 'broadcast' } = {}) {
+    const activeUsers = await User.findAll({ where: { active: true }, attributes: ['id'] });
+    const userIds = activeUsers.map(u => u.id);
+
+    if (userIds.length === 0) return { delivered: 0 };
+
+    // Missing preference row = opted in; only explicit false opts out.
+    const prefs = await UserPreference.findAll({ where: { userId: { [Op.in]: userIds } } });
+    const optedOut = new Set(prefs.filter(p => p.notification === false).map(p => p.userId));
+    const recipients = userIds.filter(id => !optedOut.has(id));
+
+    if (recipients.length === 0) return { delivered: 0 };
+
+    const rows = recipients.map(userId => ({
+        userId,
+        notificationType: type,
+        notificationContent: { title, body },
+        read: false,
+    }));
+
+    const BATCH_SIZE = 500;
+    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+        await Notification.bulkCreate(rows.slice(i, i + BATCH_SIZE));
+    }
+
+    if (io) {
+        for (const userId of recipients) {
+            io.to(`notifications_${userId}`).emit('notification', {
+                userId,
+                type,
+                content: { title, body },
+                read: false,
+            });
+        }
+    }
+
+    return { delivered: recipients.length };
+}
+
+notification.broadcast = broadcast;
 
 module.exports = notification;

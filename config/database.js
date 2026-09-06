@@ -1,3 +1,5 @@
+require("pg");
+require("pg-hstore");
 const { Sequelize } = require("sequelize");
 const config = require("./config");
 
@@ -14,7 +16,7 @@ async function validateDatabase() {
         dialectOptions: {
         },
         ...dbConfig,
-        database: "postgres"
+        database: "postgres" 
     });
 
     try {
@@ -57,7 +59,7 @@ async function validateDatabase() {
  * - Tests can import models without triggering DB connections as a side-effect.
  */
 async function initDatabase({ sync = true, syncOptions = { alter: true, force: false } } = {}) {
-    await validateDatabase();
+    // await validateDatabase();
 
     if (!sync) return sequelize;
 

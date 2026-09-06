@@ -27,6 +27,12 @@ FlatmateRequest.init({
     type: DataTypes.ENUM(...require('../config/constants').propertyTypes),
     allowNull: false,
     field: 'preferred_type',
+  }, 
+  phoneNumber: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    field: 'phone_number',
+    defaultValue: "_"
   },
   message: {
     type: DataTypes.TEXT,
@@ -39,17 +45,17 @@ FlatmateRequest.init({
   },
   radiusKm: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
     field: 'radius_km',
   },
   locationLat: {
     type: DataTypes.DECIMAL(10, 7),
-    allowNull: false,
+    allowNull: true,
     field: 'location_lat',
   },
   locationLong: {
     type: DataTypes.DECIMAL(10, 7),
-    allowNull: false,
+    allowNull: true,
     field: 'location_long',
   },
   isMatched: {

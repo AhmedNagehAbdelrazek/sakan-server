@@ -49,6 +49,7 @@ describe('US4: admin marks payment released', () => {
     });
 
     property = await Property.create({
+            city: 'Cairo',
       title: 'US4 release property',
       description: 'desc',
       pricePerMonth: 750,

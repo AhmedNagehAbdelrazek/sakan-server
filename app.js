@@ -6,12 +6,20 @@ const morgan = require("morgan");
 const mainRoute = require('./Routes/index');
 const globalErrorHandler = require('./middlewares/globalErrorHandler');
 
-function createApp() {
+function createApp({ beforeRoutes = [] } = {}) {
   const app = express();
 
   app.use(express.json());
   app.use(cors());
   app.use(helmet());
+
+  // app.use(createAuditMiddleware(audit, {
+  //   skip: (req) => req.path === '/health'
+  // }));
+
+  beforeRoutes.forEach((middleware) => {
+    app.use(middleware);
+  });
 
   // Keep noisy logging out of tests by default.
   if (process.env.NODE_ENV !== 'test') {

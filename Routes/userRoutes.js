@@ -1,5 +1,6 @@
-const { getAllUsers, getMe } = require("../Controllers/userController");
+const { getAllUsers, getMe, getUserById, updateUser } = require("../Controllers/userController");
 const protect = require('../middlewares/protect');
+const { listUsersValidator, updateUserValidator, handleValidation } = require('../utils/validators/userValidator');
 const { getpreferneces, updatePreferences } = require('../Controllers/userPreferenecsController');
 const { getUserActivities, getUserActivity, logUserActivity } = require('../Controllers/activitiesController');
 const verifyRole = require("../utils/verifyRole");
@@ -8,7 +9,7 @@ const notificationRoutes = require('./notificationRoutes');
 const router = require("express").Router();
 
 
-router.get("/",protect,verifyRole('admin'), getAllUsers);
+router.get("/",protect,verifyRole('admin','super_admin','manager'), listUsersValidator, handleValidation, getAllUsers);
 router.get("/me",protect, getMe);
 
 //user preferences routes
@@ -24,6 +25,10 @@ router.patch("/profile", protect, updateUserProfile);
 
 // notifications history routes
 router.use('/notifications', notificationRoutes);
+
+// admin single-user views (after specific routes to avoid shadowing /me, /preferences, /profile)
+router.get("/:id", protect, verifyRole('admin','super_admin','manager'), getUserById);
+router.patch("/:id", protect, verifyRole('admin','super_admin'), updateUserValidator, handleValidation, updateUser);
 
 module.exports = router;
 

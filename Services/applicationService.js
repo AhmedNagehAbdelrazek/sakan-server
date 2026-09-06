@@ -1,7 +1,7 @@
 // /Services/applicationService.js
 const { Op } = require('sequelize');
 const sequelize = require('../config/database');
-const { Application, Property, Payment } = require('../Models');
+const { Application, Property, Payment, User } = require('../Models');
 const ApiError = require('../utils/ApiError');
 const { getSupportContact } = require('../config/support');
 const notify = require('./notificationService');
@@ -43,18 +43,16 @@ class ApplicationService {
    *  "totalAmount":1000,
    * }
    */
-  static async createApplication(student, { propertyId, isForSharing = false, message, totalAmount }) {
-    if (student.role !== 'student') throw new ApiError('Only students can create applications', 403);
-
+  static async createApplication(user, { propertyId, isForSharing = false, message, totalAmount }) {
     const property = await Property.findByPk(propertyId);
     if (!property || !property.isActive) throw new ApiError('Property not found or inactive', 404);
-    if (property.userId === student.id) throw new ApiError('You cannot apply to your own property', 400);
+    if (property.userId === user.id) throw new ApiError('You cannot apply to your own property', 400);
     if (Number(property.availableRooms) <= 0) throw new ApiError('No available rooms for this property', 400);
 
-    // Prevent duplicate active applications by same student on same property
+    // Prevent duplicate active applications by same user on same property
     const existing = await Application.findOne({
       where: {
-        userId: student.id,
+        userId: user.id,
         propertyId: property.id,
         status: { [Op.in]: [APP_STATUS.PENDING, APP_STATUS.APPROVED, APP_STATUS.PAID, APP_STATUS.CHECKED_IN] },
       },
@@ -66,7 +64,7 @@ class ApplicationService {
     if (!Number.isFinite(amount) || amount <= 0) throw new ApiError('Invalid totalAmount', 400);
 
     const app = await Application.create({
-      userId: student.id,
+      userId: user.id,
       propertyId: property.id,
       isForSharing: !!isForSharing,
       message: message || null,
@@ -79,8 +77,6 @@ class ApplicationService {
 
   // Admin approves
   static async approve(admin, applicationId) {
-    if (admin.role !== 'admin') throw new ApiError('Forbidden', 403);
-
     return await sequelize.transaction(async (t) => {
       const app = await Application.findByPk(applicationId, { transaction: t, lock: t.LOCK.UPDATE });
       if (!app) throw new ApiError('Application not found', 404);
@@ -110,22 +106,26 @@ class ApplicationService {
   }
 
   // Admin rejects
-  static async reject(admin, applicationId, { reason } = {}) {
-    if (admin.role !== 'admin') throw new ApiError('Forbidden', 403);
-
+  static async reject(admin, applicationId, { reasonCategory, detail } = {}) {
     return await sequelize.transaction(async (t) => {
       const app = await Application.findByPk(applicationId, { transaction: t, lock: t.LOCK.UPDATE });
       if (!app) throw new ApiError('Application not found', 404);
       if (app.status !== APP_STATUS.PENDING) throw new ApiError('Only pending applications can be rejected', 400);
 
-      await app.update({ status: APP_STATUS.REJECTED, message: reason || app.message }, { transaction: t });
+      await app.update(
+        {
+          status: APP_STATUS.REJECTED,
+          rejectionReason: reasonCategory,
+          message: detail || reasonCategory,
+        },
+        { transaction: t }
+      );
       return app;
     });
   }
 
-  // Student initiates payment
-  static async initiatePayment(student, applicationId, { method , currency }) {
-    if (student.role !== 'student') throw new ApiError('Forbidden', 403);
+  // Applicant initiates payment
+  static async initiatePayment(user, applicationId, { method , currency }) {
     if (method != null && !paymentMethods.includes(method)) throw new ApiError('Invalid payment method', 400);
 
     const paymentCurrency = currency || 'EGP';
@@ -136,7 +136,7 @@ class ApplicationService {
     return await sequelize.transaction(async (t) => {
       const app = await Application.findByPk(applicationId, { transaction: t, lock: t.LOCK.UPDATE });
       if (!app) throw new ApiError('Application not found', 404);
-      if (app.userId !== student.id) throw new ApiError('You can only pay for your own application', 403);
+      if (app.userId !== user.id) throw new ApiError('You can only pay for your own application', 403);
 
       // Expire stale approvals before payment attempts.
       if (isApprovalExpired(app)) {
@@ -159,7 +159,7 @@ class ApplicationService {
       // Create pending payment; actual confirmation should happen via payment webhook
       const payment = await Payment.create({
         applicationId: app.id,
-        studentId: student.id,
+        studentId: user.id,
         landlordId: property.userId,
         amount: app.totalAmount,
         status: 'pending',
@@ -204,14 +204,12 @@ class ApplicationService {
     });
   }
 
-  // Student confirms check-in after payment
-  static async checkIn(student, applicationId) {
-    if (student.role !== 'student') throw new ApiError('Forbidden', 403);
-
+  // Applicant confirms check-in after payment
+  static async checkIn(user, applicationId) {
     return await sequelize.transaction(async (t) => {
       const app = await Application.findByPk(applicationId, { transaction: t, lock: t.LOCK.UPDATE });
       if (!app) throw new ApiError('Application not found', 404);
-      if (app.userId !== student.id) throw new ApiError('You can only check in for your own application', 403);
+      if (app.userId !== user.id) throw new ApiError('You can only check in for your own application', 403);
       if (app.status !== APP_STATUS.PAID) throw new ApiError('Application must be paid before check-in', 400);
 
       const now = new Date();
@@ -249,8 +247,6 @@ class ApplicationService {
 
   // Admin marks completed (after payout release handled in Payment flow)
   static async complete(admin, applicationId) {
-    if (admin.role !== 'admin') throw new ApiError('Forbidden', 403);
-
     return await sequelize.transaction(async (t) => {
       const app = await Application.findByPk(applicationId, { transaction: t, lock: t.LOCK.UPDATE });
       if (!app) throw new ApiError('Application not found', 404);
@@ -296,22 +292,36 @@ class ApplicationService {
     if (status) where.status = status;
 
     const include = [];
-    if (user.role === 'student') {
-      where.userId = user.id;
-    } else if (user.role === 'landlord') {
-      // Landlords see applications tied to their properties
+    if (user.role === 'student' || user.role === 'landlord') {
+      // Users see applications they submitted AND applications on their own properties
+      where[Op.or] = [
+        { userId: user.id },
+        { '$Property.user_id$': user.id },
+      ];
+      include.push({ model: User, as: 'user' });
       include.push({
         model: Property,
         as: 'Property',
         required: true,
-        where: { userId: user.id },
         attributes: ['id', 'title', 'userId'],
       });
-    } else if (user.role === 'admin') {
-      // admins see all
     } else {
-      throw new ApiError('Forbidden', 403);
+      include.push({ model: User, as: 'user' });
+      include.push({ model: Property, as: 'Property' });
     }
+
+    const serializeRows = (applicationRows) =>
+      applicationRows.map((app) => {
+        const data = app.toJSON();
+        delete data.userId;
+        delete data.propertyId;
+        data.property = data.Property;
+        delete data.Property;
+        if (data.property) {
+          delete data.property.userId;
+        }
+        return data;
+      });
 
     const offset = (p - 1) * l;
     const { rows, count } = await Application.findAndCountAll({
@@ -329,7 +339,7 @@ class ApplicationService {
       .map((app) => app.id);
 
     if (expiredIds.length === 0) {
-      return { items: rows, page: p, limit: l, total: count };
+      return { items: serializeRows(rows), page: p, limit: l, total: count };
     }
 
     // Expire sequentially (small batches expected) then re-query for consistent results.
@@ -346,7 +356,7 @@ class ApplicationService {
       offset,
     });
 
-    return { items: refreshed.rows, page: p, limit: l, total: refreshed.count };
+    return { items: serializeRows(refreshed.rows), page: p, limit: l, total: refreshed.count };
   }
 
   // Fetch single application with access control
@@ -360,6 +370,7 @@ class ApplicationService {
         {
           model: Payment,
         },
+        { model: User, as: 'user' },
       ]
     });
 
@@ -373,24 +384,24 @@ class ApplicationService {
       if (!app) throw new ApiError('Application not found', 404);
     }
 
-    const isAdmin = user.role === 'admin';
-    const isStudentOwner = user.role === 'student' && app.userId === user.id;
-    const isLandlordOwner = user.role === 'landlord' && app.Property && app.Property.userId === user.id;
-    if (!isAdmin && !isStudentOwner && !isLandlordOwner) {
+    const isOverseer = (user.role === 'admin' || user.role === 'super_admin' || user.role === 'manager');
+    const isApplicant = (user.role === 'student' || user.role === 'landlord') && app.userId === user.id;
+    const isPropertyOwner = (user.role === 'student' || user.role === 'landlord') && app.Property && app.Property.userId === user.id;
+    if (!isOverseer && !isApplicant && !isPropertyOwner) {
       throw new ApiError('Forbidden', 403);
     }
 
     // Serialize and enrich with stable, user-facing derived fields.
     const data = app.toJSON();
 
-    // Students must never see the exact address in-app.
-    if (user.role === 'student' && data.Property) {
+    // Applicants must never see the exact address in-app.
+    if (data.Property && user.role !== 'admin' && app.Property && app.Property.userId !== user.id) {
       data.Property.address = null;
     }
 
-    // After approval (and beyond), instruct student to contact support for exact details.
+    // After approval (and beyond), instruct the applicant to contact support for exact details.
     if (
-      user.role === 'student' &&
+      app.userId === user.id &&
       [APP_STATUS.APPROVED, APP_STATUS.PAID, APP_STATUS.CHECKED_IN, APP_STATUS.COMPLETED].includes(data.status)
     ) {
       data.contactSupport = {
@@ -418,6 +429,24 @@ class ApplicationService {
         applicationId: data.id,
         propertyId: data.propertyId,
       };
+    }
+
+    // Replace the raw foreign-key ids with the related objects.
+    delete data.userId;
+    delete data.propertyId;
+    data.property = data.Property;
+    delete data.Property;
+    if (data.property) {
+      delete data.property.userId;
+    }
+    if (Array.isArray(data.Payments)) {
+      data.Payments = data.Payments.map((pay) => {
+        const p = { ...pay };
+        delete p.studentId;
+        delete p.landlordId;
+        delete p.applicationId;
+        return p;
+      });
     }
 
     return data;
@@ -448,3 +477,4 @@ class ApplicationService {
 }
 
 module.exports = ApplicationService;
+module.exports.restoreOneRoom = restoreOneRoom;

@@ -79,6 +79,21 @@ Payment.init({
         allowNull: true,
         field: 'released_by',
     },
+    refundedAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        field: 'refunded_at',
+    },
+    refundedBy: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        field: 'refunded_by',
+    },
+    refundReason: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        field: 'refund_reason',
+    },
     
 },{
     sequelize,

@@ -44,17 +44,22 @@ Property.init({
   },
   locationLat: {
     type: DataTypes.DECIMAL(10, 7),
-    allowNull: false,
+    allowNull: true,
     field: 'location_lat',
   },
   locationLong: {
     type: DataTypes.DECIMAL(10, 7),
-    allowNull: false,
+    allowNull: true,
     field: 'location_long',
   },
   address: {
     type: DataTypes.STRING,
     allowNull: true,
+  },
+  city: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    defaultValue: '_',
   },
   amenities: {
     type: DataTypes.JSONB,

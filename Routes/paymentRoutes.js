@@ -6,13 +6,16 @@ const {
   listPayments,
   markPaymentReceived,
   markPaymentReleased,
+  markPaymentRefunded,
 } = require('../Controllers/paymentController');
+const { refundValidator, handleValidation } = require('../utils/validators/refundValidator');
 
-// List payments (landlord: own; admin: all)
-router.get('/', protect, verifyRole('landlord', 'admin'), listPayments);
+// List payments (landlord: own; admin/manager: all)
+router.get('/', protect, verifyRole('landlord', 'admin', 'super_admin', 'manager'), listPayments);
 
-// Admin/support actions (support role not present yet; admin only for now)
-router.patch('/:id/receive', protect, verifyRole('admin'), markPaymentReceived);
-router.patch('/:id/release', protect, verifyRole('admin'), markPaymentReleased);
+// Admin/support actions (admin/super_admin only; verifyRole auto-allows super_admin)
+router.patch('/:id/receive', protect, verifyRole('admin', 'super_admin'), markPaymentReceived);
+router.patch('/:id/release', protect, verifyRole('admin', 'super_admin'), markPaymentReleased);
+router.patch('/:id/refund', protect, verifyRole('admin', 'super_admin'), refundValidator, handleValidation, markPaymentRefunded);
 
 module.exports = router;

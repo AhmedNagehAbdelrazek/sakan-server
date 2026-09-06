@@ -9,7 +9,10 @@
 const ApiError = require("./ApiError");
 
 const verifyRole = (...roles) => (req, res, next) => {
-  if (!req.user || !roles.includes(req.user.role)) {
+  if(req.user.role === 'super_admin'){
+    return next();
+  }
+  if (!req.user || !roles.includes(req.user.role) ) {
     return next(new ApiError('Forbidden', 403));
   }
   next();

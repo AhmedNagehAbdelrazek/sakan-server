@@ -36,6 +36,9 @@ const protect = async (req, res, next) => {
     if (!user.verified) {
       return next(new ApiError("User is not verified", 401));
     }
+    if (!user.active) {
+      return next(new ApiError("Account is deactivated", 401));
+    }
 
     //check if user changed their password after token was issued
 

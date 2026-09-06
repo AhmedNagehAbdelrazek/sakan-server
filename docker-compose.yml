@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "12345"
+      POSTGRES_DB: sakan_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sakan_db"]
+      interval: 10s       # Check every 10 seconds instead of 5
+      timeout: 5s        # Allow up to 5 seconds to respond
+      retries: 5         # Fail only if it misses 5 times consecutively
+      start_period: 30s  # CRUCIAL: Bypasses checks entirely during the first 30 seconds of boot
+
+  server:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "9900:8000"
+    environment:
+      PORT: 8000
+      NODE_ENV: development
+      DB_USERNAME: postgres
+      DB_PASSWORD: "12345"
+      DB_NAME: sakan_db
+      DB_HOST: db
+      DB_PORT: 5432
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

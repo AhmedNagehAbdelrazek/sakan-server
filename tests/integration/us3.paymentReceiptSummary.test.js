@@ -49,6 +49,7 @@ describe('US3: receipt summary on application detail', () => {
     });
 
     property = await Property.create({
+            city: 'Cairo',
       title: 'US3 receipt property',
       description: 'desc',
       pricePerMonth: 900,

@@ -7,20 +7,10 @@ const PropertyService = require('../../Services/propertyService');
 describe('PropertyService moderation conflict behavior', () => {
   jestObject.setTimeout(30000);
 
-  let admin;
   let landlord;
 
   beforeAll(async () => {
     await initTestDatabase();
-
-    admin = await User.create({
-      username: 'moderation_admin',
-      email: 'moderation_admin@example.com',
-      phone: '01010000021',
-      password_hash: 'password',
-      role: 'admin',
-      verified: true,
-    });
 
     landlord = await User.create({
       username: 'moderation_landlord',
@@ -38,6 +28,7 @@ describe('PropertyService moderation conflict behavior', () => {
 
   test('concurrent approve/decline on sent property yields one conflict', async () => {
     const property = await Property.create({
+            city: 'Cairo',
       title: 'Concurrent moderation',
       description: 'desc',
       images: [],
@@ -55,8 +46,8 @@ describe('PropertyService moderation conflict behavior', () => {
     });
 
     const results = await Promise.allSettled([
-      PropertyService.approveSent(admin, property.id),
-      PropertyService.declineSent(admin, property.id),
+      PropertyService.approveSent(property.id),
+      PropertyService.declineSent(property.id),
     ]);
 
     const fulfilled = results.filter((result) => result.status === 'fulfilled');
@@ -67,9 +58,10 @@ describe('PropertyService moderation conflict behavior', () => {
     expect(rejected[0].reason.statusCode).toBe(409);
   });
 
-  test('reopen from declined is admin-only', async () => {
+  test('reopen from declined transitions to sent', async () => {
     const property = await Property.create({
-      title: 'Reopen authorization',
+            city: 'Cairo',
+      title: 'Reopen transition',
       description: 'desc',
       images: [],
       pricePerMonth: 770,
@@ -85,8 +77,7 @@ describe('PropertyService moderation conflict behavior', () => {
       isActive: true,
     });
 
-    await expect(PropertyService.reopenDeclined(landlord, property.id)).rejects.toMatchObject({
-      statusCode: 403,
-    });
+    const reopened = await PropertyService.reopenDeclined(property.id);
+    expect(reopened.state).toBe('sent');
   });
 });

@@ -49,6 +49,7 @@ describe('US5: admin completes application', () => {
     });
 
     property = await Property.create({
+            city: 'Cairo',
       title: 'US5 complete property',
       description: 'desc',
       pricePerMonth: 800,

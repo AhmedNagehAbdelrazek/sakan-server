@@ -40,9 +40,27 @@ function sanitizeImages(images) {
   });
 }
 
+// Owner contact details are private: public (non-owner) views get a safe subset.
+const SAFE_OWNER_FIELDS = ['id', 'username', 'role'];
+
+function safeOwner(userJson) {
+  if (!userJson) return null;
+  const safe = {};
+  for (const key of SAFE_OWNER_FIELDS) safe[key] = userJson[key];
+  return safe;
+}
+
 function maskForNonOwner(propertyInstance) {
-  const data = propertyInstance.toJSON();
+  const data = propertyInstance.toJSON ? propertyInstance.toJSON() : { ...propertyInstance };
   data.address = null;
+  delete data.userId;
+  if (data.owner) data.owner = safeOwner(data.owner);
+  return data;
+}
+
+function fullSerialize(propertyInstance) {
+  const data = propertyInstance.toJSON ? propertyInstance.toJSON() : { ...propertyInstance };
+  delete data.userId;
   return data;
 }
 
@@ -50,14 +68,8 @@ function normalizedState(propertyInstance) {
   return propertyInstance.state || 'approved';
 }
 
-function assertRole(user, role) {
-  if (!user || user.role !== role) {
-    throw new ApiError('Forbidden', 403);
-  }
-}
-
-function assertOwner(landlordUser, property) {
-  if (landlordUser.role !== 'landlord' || property.userId !== landlordUser.id) {
+function assertOwner(ownerUser, property) {
+  if (property.userId !== ownerUser.id) {
     throw new ApiError('Forbidden', 403);
   }
 }
@@ -75,11 +87,6 @@ function hasUpdatableFields(payload) {
 
 class PropertyService {
   static async createForLandlord(landlordId, payload) {
-    const landlord = await User.findByPk(landlordId);
-    if (!landlord || landlord.role !== 'landlord') {
-      throw new ApiError('Only landlords can create properties', 403);
-    }
-
     const {
       title,
       description,
@@ -90,6 +97,7 @@ class PropertyService {
       locationLat,
       locationLong,
       address,
+      city,
       amenities,
       images,
     } = payload;
@@ -97,6 +105,7 @@ class PropertyService {
     if (!propertyTypes.includes(type)) throw new ApiError('Invalid property type', 400);
     if (typeof title !== 'string' || !title.trim()) throw new ApiError('title is required', 400);
     if (typeof description !== 'string' || !description.trim()) throw new ApiError('description is required', 400);
+    if (typeof city !== 'string' || !city.trim()) throw new ApiError('city is required', 400);
 
     const price = Number(pricePerMonth);
     const total = Number(totalRooms);
@@ -107,9 +116,20 @@ class PropertyService {
     if (total < 1) throw new ApiError('totalRooms must be >= 1', 400);
     if (avail < 0 || avail > total) throw new ApiError('availableRooms must be between 0 and totalRooms', 400);
 
-    const lat = Number(locationLat);
-    const lng = Number(locationLong);
-    validateLatLng(lat, lng);
+    const hasLat = locationLat !== undefined && locationLat !== null && locationLat !== '';
+    const hasLng = locationLong !== undefined && locationLong !== null && locationLong !== '';
+    const hasAddress = address !== undefined && address !== null && address !== '';
+
+    let lat = null;
+    let lng = null;
+    if (hasLat || hasLng) {
+      if (hasLat !== hasLng) {
+        throw new ApiError('Both locationLat and locationLong must be provided together', 400);
+      }
+      lat = Number(locationLat);
+      lng = Number(locationLong);
+      validateLatLng(lat, lng);
+    }
 
     const record = await Property.create({
       title: title.trim(),
@@ -120,7 +140,8 @@ class PropertyService {
       type,
       locationLat: lat,
       locationLong: lng,
-      address: typeof address === 'string' ? address : null,
+      address: hasAddress ? address : null,
+      city: city.trim(),
       amenities: sanitizeAmenities(amenities),
       images: sanitizeImages(images),
       userId: landlordId,
@@ -132,25 +153,24 @@ class PropertyService {
   }
 
   static async listForUser(user, { page = 1, limit = 20, isActive } = {}) {
-    const p = Number(page);
-    const l = Number(limit);
+    const p = Math.max(1, Number(page) || 1);
+    const l = Math.min(100, Math.max(1, Number(limit) || 20));
     const where = {};
 
     if (typeof isActive !== 'undefined') {
       where.isActive = !!isActive;
     }
 
-    if (user.role === 'admin') {
+    if (user.role === 'admin' || user.role === 'super_admin') {
       // admins see all states and all owners
-    } else if (user.role === 'landlord') {
+    } else if (user.role === 'student' || user.role === 'landlord') {
       where.userId = user.id;
-    } else {
-      throw new ApiError('Forbidden', 403);
     }
 
     const offset = (p - 1) * l;
     const { rows, count } = await Property.findAndCountAll({
       where,
+      include: [{ model: User, as: 'owner' }],
       order: [['createdat', 'DESC']],
       limit: l,
       offset,
@@ -158,50 +178,196 @@ class PropertyService {
 
     const items = rows.map((row) => {
       if (!row.state) row.setDataValue('state', 'approved');
-      return row;
+      return fullSerialize(row);
     });
 
-    return { items, page: p, limit: l, total: count };
+    const totalPages = Math.ceil(count / l);
+
+    return { items, page: p, limit: l, total: count, totalPages };
   }
 
-  static async listForStudent(user, { page = 1, limit = 20 } = {}) {
-    const p = Number(page);
-    const l = Number(limit);
-
-    if (user.role !== 'student') {
-      throw new ApiError('Forbidden', 403);
-    }
+  static async listForRegularUser(user, { page = 1, limit = 20 } = {}) {
+    const p = Math.max(1, Number(page) || 1);
+    const l = Math.min(100, Math.max(1, Number(limit) || 20));
 
     const offset = (p - 1) * l;
     const { rows, count } = await Property.findAndCountAll({
       where: {
-        isActive: true,
-        state: 'approved',
-        availableRooms: { [Op.gt]: 0 },
+        [Op.or]: [
+          { userId: user.id },
+          {
+            isActive: true,
+            state: 'approved',
+            availableRooms: { [Op.gt]: 0 },
+          },
+        ],
       },
+      include: [{ model: User, as: 'owner' }],
       order: [['createdat', 'DESC']],
       limit: l,
       offset,
     });
 
-    const masked = rows.map(maskForNonOwner);
-    return { items: masked, page: p, limit: l, total: count };
+    const items = rows.map((row) => {
+      if (!row.state) row.setDataValue('state', 'approved');
+      return row.userId === user.id ? fullSerialize(row) : maskForNonOwner(row);
+    });
+    const totalPages = Math.ceil(count / l);
+
+    return { items, page: p, limit: l, total: count, totalPages };
+  }
+
+  static async search(user, filters = {}) {
+    const {
+      page = 1,
+      limit = 20,
+      q,
+      city,
+      type,
+      minPrice,
+      maxPrice,
+      minRooms,
+      maxRooms,
+      state,
+      isActive,
+      latitude,
+      longitude,
+      radiusKm,
+    } = filters;
+
+    const p = Math.max(1, Number(page) || 1);
+    const l = Math.min(100, Math.max(1, Number(limit) || 20));
+    const where = {};
+    const andClauses = [];
+
+    if (q) {
+      andClauses.push({
+        [Op.or]: [
+          { title: { [Op.iLike]: `%${q}%` } },
+          { description: { [Op.iLike]: `%${q}%` } },
+        ],
+      });
+    }
+
+    if (city) {
+      andClauses.push({ city: { [Op.iLike]: `%${city.trim()}%` } });
+    }
+
+    if (type) {
+      andClauses.push({ type });
+    }
+
+    if (minPrice || maxPrice) {
+      const priceFilter = {};
+      if (minPrice) priceFilter[Op.gte] = Number(minPrice);
+      if (maxPrice) priceFilter[Op.lte] = Number(maxPrice);
+      andClauses.push({ pricePerMonth: priceFilter });
+    }
+
+    if (minRooms || maxRooms) {
+      const roomsFilter = {};
+      if (minRooms) roomsFilter[Op.gte] = Number(minRooms);
+      if (maxRooms) roomsFilter[Op.lte] = Number(maxRooms);
+      andClauses.push({ totalRooms: roomsFilter });
+    }
+
+    if (user.role === 'student' || user.role === 'landlord') {
+      andClauses.push({
+        [Op.or]: [
+          { userId: user.id },
+          { isActive: true, state: 'approved', availableRooms: { [Op.gt]: 0 } },
+        ],
+      });
+    }
+
+    if (state && (user.role === 'admin' || user.role === 'super_admin')) {
+      andClauses.push({ state });
+    }
+    if (typeof isActive !== 'undefined' && (user.role === 'admin' || user.role === 'super_admin')) {
+      andClauses.push({ isActive: isActive === 'true' || isActive === true });
+    }
+
+    const lat = latitude != null ? Number(latitude) : null;
+    const lng = longitude != null ? Number(longitude) : null;
+    const radius = radiusKm != null ? Number(radiusKm) : null;
+
+    if (lat != null && lng != null && radius != null) {
+      assertNumeric(lat, 'latitude');
+      assertNumeric(lng, 'longitude');
+      assertNumeric(radius, 'radiusKm');
+
+      const latDelta = radius / 111;
+      const lngDelta = radius / (111 * Math.cos((Math.PI * lat) / 180) || 1e-6);
+
+      const minLat = lat - latDelta;
+      const maxLat = lat + latDelta;
+      const minLng = lng - lngDelta;
+      const maxLng = lng + lngDelta;
+
+      const locationIds = await sequelize.query(
+        `SELECT id FROM "properties"
+         WHERE "location_lat" BETWEEN :minLat AND :maxLat
+           AND "location_long" BETWEEN :minLng AND :maxLng
+           AND (
+             6371 * acos(
+               cos(pi() * :lat / 180) * cos(pi() * "location_lat" / 180) *
+               cos(pi() * "location_long" / 180 - pi() * :lng / 180) +
+               sin(pi() * :lat / 180) * sin(pi() * "location_lat" / 180)
+             )
+           ) <= :radiusKm`,
+        {
+          type: QueryTypes.SELECT,
+          replacements: { lat, lng, radiusKm: radius, minLat, maxLat, minLng, maxLng },
+        }
+      );
+
+      const ids = locationIds.map((r) => r.id);
+      if (ids.length === 0) {
+        const totalPages = 0;
+        return { items: [], page: p, limit: l, total: 0, totalPages };
+      }
+      andClauses.push({ id: { [Op.in]: ids } });
+    }
+
+    if (andClauses.length > 0) {
+      where[Op.and] = andClauses;
+    }
+
+    const offset = (p - 1) * l;
+    const { rows, count } = await Property.findAndCountAll({
+      where,
+      include: [{ model: User, as: 'owner' }],
+      order: [['createdat', 'DESC']],
+      limit: l,
+      offset,
+    });
+
+    const totalPages = Math.ceil(count / l);
+
+    let items;
+    if (user.role === 'admin' || user.role === 'super_admin') {
+      items = rows.map((row) => fullSerialize(row));
+    } else {
+      items = rows.map((row) => (row.userId === user.id ? fullSerialize(row) : maskForNonOwner(row)));
+    }
+
+    return { items, page: p, limit: l, total: count, totalPages };
   }
 
   static async getByIdForViewer(user, id) {
-    const prop = await Property.findByPk(id);
+    const prop = await Property.findByPk(id, { include: [{ model: User, as: 'owner' }] });
     if (!prop) throw new ApiError('Property not found', 404);
 
     const state = normalizedState(prop);
 
-    if (user.role === 'admin') {
+    if (user.role === 'admin' || user.role === 'super_admin') {
       if (!prop.state) prop.setDataValue('state', state);
-      return prop;
+      return fullSerialize(prop);
     }
 
-    if (user.role === 'landlord' && prop.userId === user.id) {
+    if ((user.role === 'student' || user.role === 'landlord') && prop.userId === user.id) {
       if (!prop.state) prop.setDataValue('state', state);
-      return prop;
+      return fullSerialize(prop);
     }
 
     if (!prop.isActive || state !== 'approved') {
@@ -215,8 +381,8 @@ class PropertyService {
     const prop = await Property.findByPk(id);
     if (!prop) throw new ApiError('Property not found', 404);
 
-    const isOwner = user.role === 'landlord' && prop.userId === user.id;
-    const isAdmin = user.role === 'admin';
+    const isOwner = (user.role === 'student' || user.role === 'landlord') && prop.userId === user.id;
+    const isAdmin = (user.role === 'admin' || user.role === 'super_admin');
     if (!isOwner && !isAdmin) throw new ApiError('Forbidden', 403);
 
     if (updates.state !== undefined) {
@@ -260,15 +426,29 @@ class PropertyService {
       if (!propertyTypes.includes(updates.type)) throw new ApiError('Invalid property type', 400);
       payload.type = updates.type;
     }
-    if (updates.locationLat != null || updates.locationLong != null) {
-      const lat = updates.locationLat != null ? Number(updates.locationLat) : Number(prop.locationLat);
-      const lng = updates.locationLong != null ? Number(updates.locationLong) : Number(prop.locationLong);
-      validateLatLng(lat, lng);
-      payload.locationLat = lat;
-      payload.locationLong = lng;
+    if (updates.locationLat !== undefined || updates.locationLong !== undefined) {
+      const latValue = updates.locationLat !== undefined ? updates.locationLat : prop.locationLat;
+      const lngValue = updates.locationLong !== undefined ? updates.locationLong : prop.locationLong;
+
+      if (latValue == null && lngValue == null) {
+        payload.locationLat = null;
+        payload.locationLong = null;
+      } else if (latValue == null || lngValue == null) {
+        throw new ApiError('Both locationLat and locationLong must be provided together', 400);
+      } else {
+        const lat = Number(latValue);
+        const lng = Number(lngValue);
+        validateLatLng(lat, lng);
+        payload.locationLat = lat;
+        payload.locationLong = lng;
+      }
     }
     if (updates.address !== undefined) {
       payload.address = typeof updates.address === 'string' ? updates.address : null;
+    }
+    if (updates.city != null) {
+      if (typeof updates.city !== 'string' || !updates.city.trim()) throw new ApiError('Invalid city', 400);
+      payload.city = updates.city.trim();
     }
     if (updates.amenities !== undefined) {
       payload.amenities = sanitizeAmenities(updates.amenities);
@@ -320,8 +500,6 @@ class PropertyService {
   }
 
   static async submitDrafted(user, id) {
-    assertRole(user, 'landlord');
-
     const property = await Property.findByPk(id);
     if (!property) throw new ApiError('Property not found', 404);
     assertOwner(user, property);
@@ -339,9 +517,7 @@ class PropertyService {
     });
   }
 
-  static async approveSent(user, id) {
-    assertRole(user, 'admin');
-
+  static async approveSent(id) {
     return this.transitionWithExpectedState({
       id,
       expectedState: propertyStateTransitions.approveSent.from,
@@ -350,9 +526,7 @@ class PropertyService {
     });
   }
 
-  static async declineSent(user, id) {
-    assertRole(user, 'admin');
-
+  static async declineSent(id) {
     return this.transitionWithExpectedState({
       id,
       expectedState: propertyStateTransitions.declineSent.from,
@@ -361,9 +535,7 @@ class PropertyService {
     });
   }
 
-  static async reopenDeclined(user, id) {
-    assertRole(user, 'admin');
-
+  static async reopenDeclined(id) {
     return this.transitionWithExpectedState({
       id,
       expectedState: propertyStateTransitions.reopenDeclined.from,
@@ -376,7 +548,7 @@ class PropertyService {
     const prop = await Property.findByPk(id);
     if (!prop) throw new ApiError('Property not found', 404);
 
-    if (user.role === 'admin') {
+    if (user.role === 'admin' || user.role === 'super_admin') {
       await prop.destroy();
       return { deleted: true, mode: 'permanent' };
     }
@@ -399,11 +571,14 @@ class PropertyService {
     return this.deleteWithRoleSemantics(user, id);
   }
 
-  static async nearbyCount({ lat, lng, radiusKm = 5 }) {
+  static async nearbyCount({ lat, lng, radiusKm = 5 }, user = null, { page = 1, limit = 20 } = {}) {
     const radius = Number(radiusKm);
     assertNumeric(lat, 'lat');
     assertNumeric(lng, 'long');
     assertNumeric(radius, 'radiusKm');
+
+    const p = Math.max(1, Number(page) || 1);
+    const l = Math.min(100, Math.max(1, Number(limit) || 20));
 
     const latDelta = radius / 111;
     const lngDelta = radius / (111 * Math.cos((Math.PI * lat) / 180) || 1e-6);
@@ -413,7 +588,7 @@ class PropertyService {
     const minLng = lng - lngDelta;
     const maxLng = lng + lngDelta;
 
-    const sql = `
+    const countSql = `
       SELECT COUNT(*)::int AS count
       FROM "properties"
       WHERE "is_active" = true
@@ -429,12 +604,53 @@ class PropertyService {
         ) <= :radiusKm
     `;
 
-    const [row] = await sequelize.query(sql, {
-      type: QueryTypes.SELECT,
-      replacements: { lat, lng, radiusKm: radius, minLat, maxLat, minLng, maxLng },
+    const itemsSql = `
+      SELECT *
+      FROM "properties"
+      WHERE "is_active" = true
+        AND "state" = 'approved'
+        AND "location_lat" BETWEEN :minLat AND :maxLat
+        AND "location_long" BETWEEN :minLng AND :maxLng
+        AND (
+          6371 * acos(
+            cos(pi() * :lat / 180) * cos(pi() * "location_lat" / 180) *
+            cos(pi() * "location_long" / 180 - pi() * :lng / 180) +
+            sin(pi() * :lat / 180) * sin(pi() * "location_lat" / 180)
+          )
+        ) <= :radiusKm
+      ORDER BY "created_at" DESC
+      LIMIT :limit OFFSET :offset
+    `;
+
+    const replacements = { lat, lng, radiusKm: radius, minLat, maxLat, minLng, maxLng, limit: l, offset: (p - 1) * l };
+
+    const [[countRow], rows] = await Promise.all([
+      sequelize.query(countSql, { type: QueryTypes.SELECT, replacements }),
+      sequelize.query(itemsSql, { type: QueryTypes.SELECT, replacements }),
+    ]);
+
+    const count = countRow?.count || 0;
+    const totalPages = Math.ceil(count / l);
+
+    // Attach the related owner object to the raw SQL rows.
+    const ownerIds = [...new Set(rows.map((r) => r.user_id))];
+    const owners = await User.findAll({ where: { id: { [Op.in]: ownerIds } } });
+    const ownerMap = new Map(owners.map((o) => [o.id, o.toJSON()]));
+    const isRegular = user && (user.role === 'student' || user.role === 'landlord');
+
+    let items = rows.map((row) => {
+      const isOwn = isRegular && row.user_id === user.id;
+      const data = { ...row };
+      data.owner = ownerMap.get(data.user_id) || null;
+      delete data.user_id;
+      if (isRegular && !isOwn) {
+        data.address = null;
+        data.owner = safeOwner(data.owner);
+      }
+      return data;
     });
 
-    return { count: row?.count || 0 };
+    return { items, count, page: p, limit: l, totalPages };
   }
 }
 

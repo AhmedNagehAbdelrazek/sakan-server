@@ -49,6 +49,7 @@ describe('US2: capacity transitions', () => {
 
   test('approve decrements availableRooms and sets approval timestamps', async () => {
     const property = await Property.create({
+            city: 'Cairo',
       title: 'US2 property',
       description: 'desc',
       pricePerMonth: 1000,
@@ -83,6 +84,7 @@ describe('US2: capacity transitions', () => {
 
   test('expired approval is rejected and capacity restored on read', async () => {
     const property = await Property.create({
+            city: 'Cairo',
       title: 'US2 property expiry',
       description: 'desc',
       pricePerMonth: 1000,

@@ -20,7 +20,7 @@ module.exports = {
         declineSent: { from: "sent", to: "declined" },
         reopenDeclined: { from: "declined", to: "sent" },
     },
-    applicationStatus: ['pending', 'approved', 'paid','checked_in', 'rejected', 'completed'],
+    applicationStatus: ['pending', 'approved', 'paid','checked_in', 'rejected', 'refunded', 'completed'],
     paymentStatus: ['pending', 'received', 'released', 'refunded'],
     paymentMethods: ['card', 'wallet', 'cash', 'transfer'],
     APP_STATUS: {
@@ -29,7 +29,17 @@ module.exports = {
         REJECTED: 'rejected',
         PAID: 'paid',
         CHECKED_IN: 'checked_in',
+        REFUNDED: 'refunded',
         COMPLETED: 'completed',
     },
-    currency:["EGP","USD"]
+    currency:["EGP","USD"],
+    requestTypes: ["looking", "offering"],
+    requestStatus: ["pending", "contacted", "resolved", "closed"],
+    requestStatusTransitions: {
+        pendingToContacted: { from: 'pending', to: 'contacted' },
+        pendingToClosed: { from: 'pending', to: 'closed' },
+        contactedToResolved: { from: 'contacted', to: 'resolved' },
+        contactedToClosed: { from: 'contacted', to: 'closed' },
+    },
+    rejectionReasons: ['not_available', 'not_interested', 'payment_issue', 'documents_missing', 'other'],
 };

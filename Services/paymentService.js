@@ -1,7 +1,8 @@
 const sequelize = require('../config/database');
-const { Payment, Application } = require('../Models');
+const { Payment, Application, User } = require('../Models');
 const ApiError = require('../utils/ApiError');
 const notify = require('./notificationService');
+const { restoreOneRoom } = require('./applicationService');
 
 const { APP_STATUS } = require('../config/constants');
 
@@ -15,23 +16,36 @@ class PaymentService {
 
     if (user.role === 'landlord') {
       where.landlordId = user.id;
-    } else if (user.role === 'admin') {
-      // admins can see all payments
-    } else {
-      throw new ApiError('Forbidden', 403);
     }
 
     const offset = (p - 1) * l;
 
     const { rows, count } = await Payment.findAndCountAll({
       where,
+      include: [
+        { model: User, as: 'student' },
+        { model: User, as: 'landlord' },
+        { model: Application, as: 'application' },
+      ],
       order: [['createdat', 'DESC']],
       limit: l,
       offset,
     });
 
+    const items = rows.map((row) => {
+      const data = row.toJSON();
+      delete data.studentId;
+      delete data.landlordId;
+      delete data.applicationId;
+      if (data.application) {
+        delete data.application.userId;
+        delete data.application.propertyId;
+      }
+      return data;
+    });
+
     return {
-      items: rows,
+      items,
       page: p,
       limit: l,
       total: count,
@@ -39,8 +53,6 @@ class PaymentService {
   }
 
   static async markReceived(actor, paymentId) {
-    if (!actor || actor.role !== 'admin') throw new ApiError('Forbidden', 403);
-
     return sequelize.transaction(async (t) => {
       const payment = await Payment.findByPk(paymentId, {
         transaction: t,
@@ -113,8 +125,6 @@ class PaymentService {
   }
 
   static async markReleased(actor, paymentId) {
-    if (!actor || actor.role !== 'admin') throw new ApiError('Forbidden', 403);
-
     return sequelize.transaction(async (t) => {
       const payment = await Payment.findByPk(paymentId, {
         transaction: t,
@@ -161,6 +171,75 @@ class PaymentService {
         });
       } catch (e) {
         console.error('Notification error (payment released):', e);
+      }
+
+      return payment;
+    });
+  }
+
+  static async markRefunded(actor, paymentId, reason) {
+    return sequelize.transaction(async (t) => {
+      const payment = await Payment.findByPk(paymentId, {
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+      if (!payment) throw new ApiError('Payment not found', 404);
+
+      if (payment.status === 'refunded') {
+        throw new ApiError('Payment already refunded', 400);
+      }
+
+      if (payment.status !== 'received') {
+        throw new ApiError('Only received (not yet released) payments can be refunded', 400);
+      }
+
+      const app = await Application.findByPk(payment.applicationId, {
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+      if (!app) throw new ApiError('Application not found for payment', 404);
+      if (app.status === APP_STATUS.COMPLETED) {
+        throw new ApiError('Cannot refund a payment for a completed application', 400);
+      }
+
+      const now = new Date();
+      await payment.update(
+        {
+          status: 'refunded',
+          refundedAt: now,
+          refundedBy: actor.id,
+          refundReason: reason,
+        },
+        { transaction: t }
+      );
+
+      // Restore reserved room capacity and close out the application as refunded.
+      const reserved = app.status === APP_STATUS.PAID || app.status === APP_STATUS.CHECKED_IN;
+      if (reserved) {
+        await restoreOneRoom({ propertyId: app.propertyId, transaction: t });
+      }
+      await app.update({ status: APP_STATUS.REFUNDED }, { transaction: t });
+
+      try {
+        await notify(null, {
+          userId: payment.studentId,
+          type: 'payment_refunded',
+          message: {
+            title: 'Payment refunded',
+            body: 'Your payment has been refunded.',
+          },
+        });
+
+        await notify(null, {
+          userId: payment.landlordId,
+          type: 'payment_refunded',
+          message: {
+            title: 'Payment refunded',
+            body: 'A payment for one of your properties has been refunded.',
+          },
+        });
+      } catch (e) {
+        console.error('Notification error (payment refunded):', e);
       }
 
       return payment;

@@ -13,18 +13,19 @@ const FlatDemand = require("./flatDemand");
 const FlatmateRequest = require("./flatmateRequest");
 const JoinInterest = require("./joinInterest");
 const Property = require("./property");
+const PropertyRequest = require("./propertyRequest");
 const Application = require("./application");
 const Payment = require("./payment");
 
 
-User.hasOne(UserProfile, { foreignKey: "userId" });
-UserProfile.belongsTo(User, { foreignKey: "userId" });
+User.hasOne(UserProfile, { as: 'profile', foreignKey: "userId" });
+UserProfile.belongsTo(User, { as: 'profile', foreignKey: "userId" });
 
 User.hasMany(UserActivity, { foreignKey: "userId" });
-UserActivity.belongsTo(User, { foreignKey: "userId" });
+UserActivity.belongsTo(User, { as: 'user', foreignKey: "userId" });
 
-User.hasOne(UserPreference, { foreignKey: "userId" });
-UserPreference.belongsTo(User, { foreignKey: "userId" });
+User.hasOne(UserPreference, { as: 'preferences', foreignKey: "userId" });
+UserPreference.belongsTo(User, { as: 'preferences', foreignKey: "userId" });
 
 User.hasMany(Notification, { foreignKey: "userId" });
 Notification.belongsTo(User, { foreignKey: "userId" });
@@ -46,28 +47,34 @@ User.hasMany(FlatDemand, { foreignKey: "userId" });
 FlatDemand.belongsTo(User, { foreignKey: "userId" });
 
 User.hasMany(FlatmateRequest, { foreignKey: "userId" });
-FlatmateRequest.belongsTo(User, { foreignKey: "userId" });
+FlatmateRequest.belongsTo(User, { as: 'user', foreignKey: "userId" });
 
 User.hasMany(JoinInterest, { foreignKey: "requesterId" });
-JoinInterest.belongsTo(User, { foreignKey: "requesterId" });
+JoinInterest.belongsTo(User, { as: 'requester', foreignKey: "requesterId" });
+
+FlatmateRequest.hasMany(JoinInterest, { as: 'joinInterests', foreignKey: "flatmateRequestId" });
+JoinInterest.belongsTo(FlatmateRequest, { foreignKey: "flatmateRequestId" });
 
 User.hasMany(Property, { foreignKey: "userId" });
-Property.belongsTo(User, { foreignKey: "userId" });
+Property.belongsTo(User, { as: 'owner', foreignKey: "userId" });
+
+User.hasMany(PropertyRequest, { foreignKey: "userId" });
+PropertyRequest.belongsTo(User, { as: 'user', foreignKey: "userId" });
 
 User.hasMany(Application, { foreignKey: "userId" });
-Application.belongsTo(User, { foreignKey: "userId" });
+Application.belongsTo(User, { as: 'user', foreignKey: "userId" });
 
 Property.hasMany(Application, { foreignKey: 'propertyId' });
 Application.belongsTo(Property, { foreignKey: 'propertyId' });
 
 Application.hasMany(Payment, { foreignKey: 'applicationId' });
-Payment.belongsTo(Application, { foreignKey: 'applicationId' });
+Payment.belongsTo(Application, { as: 'application', foreignKey: 'applicationId' });
 
 User.hasMany(Payment, { foreignKey: "studentId" });
-Payment.belongsTo(User, { foreignKey: "studentId" });
+Payment.belongsTo(User, { as: 'student', foreignKey: "studentId" });
 
 User.hasMany(Payment, { foreignKey: "landlordId" });
-Payment.belongsTo(User, { foreignKey: "landlordId" });
+Payment.belongsTo(User, { as: 'landlord', foreignKey: "landlordId" });
 
 module.exports = {
   sequelize,
@@ -83,6 +90,7 @@ module.exports = {
   FlatmateRequest,
   JoinInterest,
   Property,
+  PropertyRequest,
   Application,
   Payment,
 };

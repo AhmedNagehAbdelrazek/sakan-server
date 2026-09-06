@@ -28,7 +28,7 @@ exports.approve = asyncHandler(async (req, res) => {
 });
 
 exports.reject = asyncHandler(async (req, res) => {
-  const app = await ApplicationService.reject(req.user, req.params.id, { reason: req.body.reason });
+  const app = await ApplicationService.reject(req.user, req.params.id, { reasonCategory: req.body.reasonCategory, detail: req.body.detail });
   res.json(app);
 });
 

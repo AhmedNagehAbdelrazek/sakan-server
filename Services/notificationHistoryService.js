@@ -12,7 +12,7 @@ async function listForUser(userId, { page = 1, limit = 20, unread } = {}) {
 
   const { rows, count } = await Notification.findAndCountAll({
     where,
-    order: [['createdAt', 'DESC']],
+    order: [['createdat', 'DESC']],
     limit: safeLimit,
     offset: (safePage - 1) * safeLimit,
   });

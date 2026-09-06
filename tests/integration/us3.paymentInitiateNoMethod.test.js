@@ -49,6 +49,7 @@ describe('US3: initiate payment without method', () => {
     });
 
     property = await Property.create({
+            city: 'Cairo',
       title: 'US3 property',
       description: 'desc',
       pricePerMonth: 800,

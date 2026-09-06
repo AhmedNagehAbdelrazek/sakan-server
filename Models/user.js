@@ -82,6 +82,11 @@ User.init({
     type: DataTypes.BOOLEAN,
     defaultValue: false
   },
+  active: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
+  },
   otp_expiry_time: {
     type: DataTypes.DATE,
   },

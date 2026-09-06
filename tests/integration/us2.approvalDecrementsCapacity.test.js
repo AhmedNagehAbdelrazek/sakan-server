@@ -61,6 +61,7 @@ describe('US2: approval decrements capacity safely', () => {
     });
 
     property = await Property.create({
+            city: 'Cairo',
       title: 'US2 last room',
       description: 'desc',
       pricePerMonth: 500,

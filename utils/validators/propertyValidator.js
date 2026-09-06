@@ -6,7 +6,7 @@ const parseMaybeJsonObject = (value) => {
   if (typeof value !== 'string') return value;
   try {
     return JSON.parse(value);
-  } catch (error) {
+  } catch {
     return value;
   }
 };
@@ -45,9 +45,9 @@ const propertyIdParamValidator = param('id').isUUID().withMessage('invalid prope
  *  totalRooms:1,
  *  availableRooms:1,
  *  type:"apartment",
- *  locationLat:1,
- *  locationLong:1,
- *  address:"address",
+ *  locationLat:1,     // optional
+ *  locationLong:1,    // optional
+ *  address:"address", // optional
  *  amenities:{
  *    wifi:true,
  *    parking:true,
@@ -55,6 +55,9 @@ const propertyIdParamValidator = param('id').isUUID().withMessage('invalid prope
  *    pool:true,
  *  }
  * }
+ * 
+ * locationLat, locationLong and address are all optional.
+ * If only one coordinate is provided an error is raised.
  */ 
 const createPropertyValidator = [
   denyStatePayload,
@@ -63,10 +66,11 @@ const createPropertyValidator = [
   body('pricePerMonth').isFloat({ gt: 0 }),
   body('totalRooms').isInt({ min: 1 }),
   body('availableRooms').isInt({ min: 0 }),
-  body('type').isIn(propertyTypes),
-  body('locationLat').isFloat({ min: -90, max: 90 }),
-  body('locationLong').isFloat({ min: -180, max: 180 }),
-  body('address').optional({ nullable: true }).isString(),
+  body('type').isIn(propertyTypes).withMessage('Invalid property type, it should be one of: ' + propertyTypes.join(', ')),
+  body('city').isString().trim().notEmpty().withMessage('city is required'),
+  body('locationLat').optional({ nullable: true }).isFloat({ min: -90, max: 90 }),
+  body('locationLong').optional({ nullable: true }).isFloat({ min: -180, max: 180 }),
+  body('address').optional({ nullable: true }).isString().withMessage('Invalid address, it should be a string'),
   body('amenities')
     .optional()
     .customSanitizer(parseMaybeJsonObject)
@@ -82,9 +86,10 @@ const updatePropertyValidator = [
   body('totalRooms').optional().isInt({ min: 1 }),
   body('availableRooms').optional().isInt({ min: 0 }),
   body('type').optional().isIn(propertyTypes),
-  body('locationLat').optional().isFloat({ min: -90, max: 90 }),
-  body('locationLong').optional().isFloat({ min: -180, max: 180 }),
-  body('address').optional({ nullable: true }).isString(),
+  body('city').optional().isString().trim().notEmpty().withMessage('city must be a non-empty string'),
+  body('locationLat').optional({ nullable: true }).isFloat({ min: -90, max: 90 }),
+  body('locationLong').optional({ nullable: true }).isFloat({ min: -180, max: 180 }),
+  body('address').optional({ nullable: true }).isString().withMessage('Invalid address, it should be a string'),
   body('amenities')
     .optional()
     .customSanitizer(parseMaybeJsonObject)
@@ -103,7 +108,7 @@ const approvePropertyValidator = [
 
 const declinePropertyValidator = [
   propertyIdParamValidator,
-  body('reason').optional().isString().trim().isLength({ max: 500 }),
+  body('reason').optional().isString().trim().isLength({ max: 500 }).withMessage('Invalid reason, it should be a string with a maximum length of 500 characters'),
 ];
 
 const reopenPropertyValidator = [
@@ -112,6 +117,23 @@ const reopenPropertyValidator = [
 
 const propertyIdOnlyValidator = [
   propertyIdParamValidator,
+];
+
+const searchPropertyValidator = [
+  query('page').optional().isInt({ min: 1 }).withMessage('page must be a positive integer'),
+  query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('limit must be between 1 and 100'),
+  query('q').optional().isString().trim(),
+  query('city').optional().isString().trim().notEmpty(),
+  query('type').optional().isIn(propertyTypes).withMessage('Invalid property type, it should be one of: ' + propertyTypes.join(', ')),
+  query('minPrice').optional().isFloat({ min: 0 }).withMessage('minPrice must be a positive number'),
+  query('maxPrice').optional().isFloat({ min: 0 }).withMessage('maxPrice must be a positive number'),
+  query('minRooms').optional().isInt({ min: 1 }).withMessage('minRooms must be a positive integer'),
+  query('maxRooms').optional().isInt({ min: 1 }).withMessage('maxRooms must be a positive integer'),
+  query('state').optional().isIn(propertyStates).withMessage('Invalid state, it should be one of: ' + propertyStates.join(', ')),
+  query('isActive').optional().isBoolean().withMessage('isActive must be a boolean'),
+  query('latitude').optional().isFloat({ min: -90, max: 90 }).withMessage('latitude must be between -90 and 90'),
+  query('longitude').optional().isFloat({ min: -180, max: 180 }).withMessage('longitude must be between -180 and 180'),
+  query('radiusKm').optional().isFloat({ gt: 0, lt: 100 }).withMessage('radiusKm must be between 0 and 100'),
 ];
 
 const nearbyValidator = [
@@ -130,6 +152,7 @@ module.exports = {
   createPropertyValidator,
   updatePropertyValidator,
   nearbyValidator,
+  searchPropertyValidator,
   submitPropertyValidator,
   approvePropertyValidator,
   declinePropertyValidator,

@@ -1,0 +1,5 @@
+# Replace with your actual domain name
+
+api.yourdomain.com {
+reverse_proxy server:8000
+}

@@ -49,6 +49,7 @@ describe('US5: student check-in after paid', () => {
     });
 
     property = await Property.create({
+            city: 'Cairo',
       title: 'US5 check-in property',
       description: 'desc',
       pricePerMonth: 600,

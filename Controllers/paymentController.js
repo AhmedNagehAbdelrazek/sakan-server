@@ -27,8 +27,18 @@ async function markPaymentReleased(req, res, next) {
   }
 }
 
+async function markPaymentRefunded(req, res, next) {
+  try {
+    const payment = await PaymentService.markRefunded(req.user, req.params.id, req.body.reason);
+    res.status(200).json(payment.toJSON());
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   listPayments,
   markPaymentReceived,
   markPaymentReleased,
+  markPaymentRefunded,
 };

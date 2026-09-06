@@ -38,6 +38,11 @@ Application.init({
         type: DataTypes.TEXT,
         allowNull: true,
     },
+    rejectionReason: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        field: 'rejection_reason',
+    },
     totalAmount: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,

@@ -38,6 +38,7 @@ describe('PropertyService drafted lifecycle rules', () => {
 
   test('submitDrafted transitions drafted to sent and re-activates property', async () => {
     const property = await Property.create({
+            city: 'Cairo',
       title: 'Draft to sent',
       description: 'desc',
       images: [],
@@ -61,6 +62,7 @@ describe('PropertyService drafted lifecycle rules', () => {
 
   test('editing drafted property does not auto-submit', async () => {
     const property = await Property.create({
+            city: 'Cairo',
       title: 'Draft edit keep state',
       description: 'desc',
       images: [],
@@ -86,6 +88,7 @@ describe('PropertyService drafted lifecycle rules', () => {
 
   test('landlord delete converts owned property to drafted, admin delete is permanent', async () => {
     const ownerProperty = await Property.create({
+            city: 'Cairo',
       title: 'Owner delete',
       description: 'desc',
       images: [],
@@ -110,6 +113,7 @@ describe('PropertyService drafted lifecycle rules', () => {
     expect(refreshed.state).toBe('drafted');
 
     const adminProperty = await Property.create({
+            city: 'Cairo',
       title: 'Admin permanent delete',
       description: 'desc',
       images: [],

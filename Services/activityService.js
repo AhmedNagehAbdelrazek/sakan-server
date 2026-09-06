@@ -35,17 +35,23 @@ class ActivityService {
             order: [['timestamp', 'DESC']],
             include: {
                 model: User,
-                attributes: ['username', 'email', 'role'],
+                as: 'user',
+                attributes: ['id', 'username', 'email', 'role'],
             },
         });
 
-        return activities;
+        return activities.map((a) => {
+            const data = a.toJSON();
+            delete data.userId;
+            return data;
+        });
     }
 
     static async getActivity(id){
         const activity = await UserActivity.findByPk(id,{
             include: {
                 model: User,
+                as: 'user',
                 attributes: ['username', 'email','role'],
             }
         });
@@ -54,7 +60,9 @@ class ActivityService {
             throw new ApiError('There is no activity with this id.', 404);
         }
     
-        return activity;
+        const data = activity.toJSON();
+        delete data.userId;
+        return data;
     }
 
     static async getUserActivities(user, limit, offset){
@@ -62,15 +70,25 @@ class ActivityService {
             where: { userId: user.id },
             limit,
             offset,
+            include: {
+                model: User,
+                as: 'user',
+                attributes: ['id', 'username', 'email', 'role'],
+            },
         });
     
-        return activities;
+        return activities.map((a) => {
+            const data = a.toJSON();
+            delete data.userId;
+            return data;
+        });
     }
 
     static async getUserActivity(user, id){
         const activity = await UserActivity.findByPk(id,{
             include: {
                 model: User,
+                as: 'user',
                 attributes: ['username', 'email','role'],
             }
         });
@@ -83,7 +101,9 @@ class ActivityService {
             throw new ApiError('This activity belongs to another user so you cannot access it.', 403);
         }
     
-        return activity;
+        const data = activity.toJSON();
+        delete data.userId;
+        return data;
     }
 
     static async logUserActivity(user, activityType, activityDetails){

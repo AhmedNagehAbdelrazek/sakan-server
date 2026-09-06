@@ -33,6 +33,7 @@ async function createLifecycleUsers(prefix = 'lifecycle') {
 
 async function createPropertyForState({ landlordId, state = 'sent', isActive = true, overrides = {} }) {
   return Property.create({
+    city: 'Cairo',
     title: 'Lifecycle property',
     description: 'Lifecycle property description',
     images: [],
