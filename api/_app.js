@@ -55,13 +55,16 @@ function createDatabaseBootstrapMiddleware() {
         }
         try {
           const db = getLiveSequelize();
+          // Small backoff so a suspended Neon compute has time to wake before retrying.
+          await new Promise((r) => setTimeout(r, 500));
           globalThis[GLOBAL_KEY] = db.initDatabase({ sync: false });
           await globalThis[GLOBAL_KEY];
           return next();
         } catch (retryError) {
           globalThis[GLOBAL_KEY] = undefined;
           return next(retryError);
-        }      }
+        }
+      }
 
       globalThis[GLOBAL_KEY] = undefined;
       return next(error);
